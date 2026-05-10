@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>studyBuddy</title>
 
+  <!-- Fonts + Libraries -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -14,6 +15,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 
   <style>
+    /* ══════════ TEMEL DEĞİŞKENLER ══════════ */
     :root {
       --bg: #0d0f14; --bg2: #131720; --bg3: #1a1f2e; --card: #1e2436; --card2: #242b3d;
       --border: #2e3650; --accent: #6c63ff; --accent2: #a78bfa; --accent3: #34d399;
@@ -21,120 +23,243 @@
       --danger: #f87171; --warning: #fb923c; --shadow: 0 4px 24px rgba(0,0,0,.45);
       --radius: 14px; --font-display: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
     }
+
     html[data-theme="light"] {
       --bg: #f0f2fa; --bg2: #e8ebf6; --bg3: #dde1f0; --card: #ffffff; --card2: #f5f7ff;
       --border: #d0d5ea; --text: #1a1f35; --text2: #4a5380; --text3: #8892b0; --shadow: 0 4px 24px rgba(0,0,0,.10);
     }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{font-size:16px;scroll-behavior:smooth}
-    body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-    ::-webkit-scrollbar{width:6px}
-    ::-webkit-scrollbar-track{background:var(--bg2)}
-    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-    #app{display:flex;flex-direction:column;min-height:100vh}
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:56px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
-    .topbar-logo{font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:var(--accent2);letter-spacing:-0.5px;white-space:nowrap}
-    .topbar-logo span{color:var(--text3);font-weight:400}
-    .topbar-right{display:flex;align-items:center;gap:8px}
-    .user-badge{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 12px 4px 4px;font-size:.78rem;cursor:pointer;transition:border-color .2s}
-    .user-badge:hover{border-color:var(--accent)}
-    .user-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent3));display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff}
-    .nav-tabs{display:flex;gap:0;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
-    .nav-tabs::-webkit-scrollbar{display:none}
-    .nav-tab{display:flex;align-items:center;gap:5px;padding:0 14px;height:44px;font-size:.8rem;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-body)}
-    .nav-tab:hover{color:var(--text2)}
-    .nav-tab.active{color:var(--accent2);border-bottom-color:var(--accent2)}
-    .nav-tab svg{width:14px;height:14px}
-    .main{flex:1;padding:16px;max-width:960px;margin:0 auto;width:100%}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
-    .card-title{font-family:var(--font-display);font-size:.9rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
-    .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border-radius:8px;font-family:var(--font-body);font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .18s;white-space:nowrap}
-    .btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(108,99,255,.4)}
-    .btn-primary:hover{background:var(--accent2);box-shadow:0 4px 18px rgba(167,139,250,.4)}
-    .btn-secondary{background:var(--card2);color:var(--text2);border-color:var(--border)}
-    .btn-secondary:hover{border-color:var(--accent);color:var(--text)}
-    .btn-danger{background:rgba(248,113,113,.15);color:var(--danger);border-color:rgba(248,113,113,.3)}
-    .btn-danger:hover{background:rgba(248,113,113,.25)}
-    .btn-success{background:rgba(52,211,153,.15);color:var(--accent3);border-color:rgba(52,211,153,.3)}
-    .btn-success:hover{background:rgba(52,211,153,.25)}
-    .btn-sm{padding:5px 10px;font-size:.75rem}
-    .btn-icon{padding:6px;border-radius:6px}
-    .form-group{margin-bottom:12px}
-    .form-label{display:block;font-size:.76rem;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
-    .form-input,.form-select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:var(--font-body);font-size:.9rem;color:var(--text);transition:border-color .2s;outline:none}
-    .form-input:focus,.form-select:focus{border-color:var(--accent)}
-    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .progress-wrap{background:var(--bg2);border-radius:999px;height:7px;overflow:hidden}
-    .progress-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s ease}
-    .progress-bar.green{background:linear-gradient(90deg,var(--accent3),#10b981)}
-    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
-    .stat-card{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px}
-    .stat-card-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
-    .stat-card-value{font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--text);line-height:1}
-    .stat-card-sub{font-size:.72rem;color:var(--text3);margin-top:2px}
-    #presence-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;overflow:hidden}
-    .empty-presence{text-align:center;padding:24px 0;color:var(--text3);font-size:.85rem}
-    .empty-presence svg{width:40px;height:40px;margin-bottom:6px;opacity:.3}
-    .activity-item{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;flex-wrap:wrap;transition:border-color .2s}
-    .activity-item:hover{border-color:var(--accent)}
-    .activity-item.running{border-color:var(--accent3)}
-    .activity-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-    .activity-info{flex:1 1 60%;min-width:0}
-    .activity-name{font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .activity-meta{font-size:.72rem;color:var(--text3);margin-top:2px}
-    .activity-timer{font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--accent2);min-width:55px;text-align:right}
-    .activity-timer.running{color:var(--accent3)}
-    .activity-actions{display:flex;gap:4px;margin-left:auto}
-    .calendar-event-item{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;flex-wrap:wrap;transition:border-color .2s}
-    .calendar-event-item.overdue{border-color:var(--danger);background:rgba(248,113,113,.06)}
-    .calendar-event-info{flex:1 1 60%;min-width:0}
-    .calendar-event-title{font-weight:600;font-size:.85rem}
-    .calendar-event-date{font-size:.72rem;color:var(--text3);margin-top:2px}
-    .calendar-event-note{font-size:.72rem;color:var(--text2);margin-top:2px;font-style:italic}
-    .calendar-event-countdown{font-family:var(--font-display);font-size:.9rem;font-weight:700;min-width:100px;text-align:right;color:var(--accent2)}
-    .calendar-event-countdown.urgent{color:var(--warning)}
-    .calendar-event-countdown.overdue{color:var(--danger)}
-    .lb-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-    .lb-tab{padding:5px 14px;border-radius:999px;font-size:.78rem;font-weight:600;cursor:pointer;background:var(--card2);border:1px solid var(--border);color:var(--text3)}
-    .lb-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .lb-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;margin-bottom:5px;background:var(--card2);border:1px solid var(--border)}
-    .lb-rank{font-family:var(--font-display);font-weight:800;font-size:.9rem;min-width:28px;text-align:center;color:var(--text3)}
-    .lb-name{flex:1;font-size:.85rem;font-weight:500}
-    .lb-time{font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--accent2)}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-    .modal-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:100%;max-width:400px;animation:slideUp .22s ease}
-    .modal-title{font-family:var(--font-display);font-size:1.1rem;font-weight:700;margin-bottom:16px}
-    .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
-    #toast-container{position:fixed;bottom:20px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px}
-    .toast{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:.82rem;font-weight:500;box-shadow:var(--shadow);animation:slideIn .25s ease}
-    .toast.success{border-left-color:var(--accent3)}
-    .toast.error{border-left-color:var(--danger)}
-    @keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
-    #loading-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
-    .spinner{width:40px;height:40px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .hidden{display:none!important}
-    .flex{display:flex}
-    .items-center{align-items:center}
-    .gap-2{gap:6px}
-    .mt-2{margin-top:6px}
-    .mt-3{margin-top:10px}
-    .text-sm{font-size:.78rem;color:var(--text2)}
-    .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:600}
-    .badge-purple{background:rgba(108,99,255,.2);color:var(--accent2)}
-    .badge-green{background:rgba(52,211,153,.2);color:var(--accent3)}
-    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.6}}
-    #auth-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
-    .auth-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:380px;box-shadow:var(--shadow);text-align:center}
-    .auth-logo{font-family:var(--font-display);font-size:1.8rem;font-weight:800;color:var(--accent2);margin-bottom:20px}
-    .auth-logo span{color:var(--text3);font-weight:400}
-    .auth-tabs{display:flex;gap:6px;margin-bottom:18px}
-    .auth-tab{flex:1;padding:10px;font-weight:600;cursor:pointer;border-radius:8px;background:var(--bg2);color:var(--text3);border:1px solid var(--border);transition:.2s;font-size:.82rem}
-    .auth-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .auth-form{display:flex;flex-direction:column;gap:14px;text-align:left}
-    @media (max-width:480px){.main{padding:12px}.topbar{padding:0 10px;height:50px}.topbar-logo{font-size:1rem}.user-badge{padding:2px 10px 2px 2px;font-size:.72rem}.stat-card{padding:12px}.stat-card-value{font-size:1.4rem}.activity-actions .btn{padding:4px 8px;font-size:.7rem}.calendar-event-countdown{min-width:80px;font-size:.8rem}.btn{padding:6px 12px;font-size:.78rem}.form-row{grid-template-columns:1fr}}
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+    /* ══════════ SCROLL ══════════ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ══════════ TOPBAR ══════════ */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; height: 56px; background: var(--bg2);
+      border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .topbar-logo { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--accent2); }
+    .topbar-logo span { color: var(--text3); font-weight: 400; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .user-badge {
+      display: flex; align-items: center; gap: 6px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px 4px 4px;
+      font-size: .78rem; cursor: pointer; transition: border-color .2s;
+    }
+    .user-badge:hover { border-color: var(--accent); }
+    .user-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; color: #fff;
+    }
+
+    /* ══════════ NAV TABS ══════════ */
+    .nav-tabs {
+      display: flex; gap: 0; background: var(--bg2); border-bottom: 1px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      display: flex; align-items: center; gap: 5px; padding: 0 14px; height: 44px;
+      font-size: .8rem; font-weight: 500; color: var(--text3); cursor: pointer;
+      border-bottom: 2px solid transparent; white-space: nowrap;
+      transition: color .2s, border-color .2s; background: none; border-top: none;
+      border-left: none; border-right: none; font-family: var(--font-body);
+    }
+    .nav-tab:hover { color: var(--text2); }
+    .nav-tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+    .nav-tab svg { width: 14px; height: 14px; }
+
+    .main { flex: 1; padding: 16px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+    /* ══════════ CARDS ══════════ */
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 14px;
+    }
+    .card-title {
+      font-family: var(--font-display); font-size: .9rem; font-weight: 700; color: var(--text2);
+      text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ══════════ BUTTONS ══════════ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px; padding: 7px 15px;
+      border-radius: 8px; font-family: var(--font-body); font-size: .82rem; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent; transition: all .18s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(108,99,255,.4); }
+    .btn-primary:hover { background: var(--accent2); box-shadow: 0 4px 18px rgba(167,139,250,.4); }
+    .btn-secondary { background: var(--card2); color: var(--text2); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+    .btn-danger { background: rgba(248,113,113,.15); color: var(--danger); border-color: rgba(248,113,113,.3); }
+    .btn-danger:hover { background: rgba(248,113,113,.25); }
+    .btn-success { background: rgba(52,211,153,.15); color: var(--accent3); border-color: rgba(52,211,153,.3); }
+    .btn-success:hover { background: rgba(52,211,153,.25); }
+    .btn-sm { padding: 5px 10px; font-size: .75rem; }
+    .btn-icon { padding: 6px; border-radius: 6px; }
+
+    /* ══════════ FORM ══════════ */
+    .form-group { margin-bottom: 12px; }
+    .form-label {
+      display: block; font-size: .76rem; font-weight: 600; color: var(--text2);
+      margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .form-input, .form-select {
+      width: 100%; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; font-family: var(--font-body);
+      font-size: .9rem; color: var(--text); transition: border-color .2s; outline: none;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ══════════ PROGRESS ══════════ */
+    .progress-wrap { background: var(--bg2); border-radius: 999px; height: 7px; overflow: hidden; }
+    .progress-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .5s ease; }
+    .progress-bar.green { background: linear-gradient(90deg, var(--accent3), #10b981); }
+
+    /* ══════════ STATS ══════════ */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .stat-card { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .stat-card-label { font-size: .7rem; font-weight: 600; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+    .stat-card-value { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--text); line-height: 1; }
+    .stat-card-sub { font-size: .72rem; color: var(--text3); margin-top: 2px; }
+
+    /* ══════════ PRESENCE (ANİMASYONLU MASAÜSTÜ) ══════════ */
+    #presence-section {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 14px; overflow: hidden;
+    }
+    .empty-presence { text-align: center; padding: 24px 0; color: var(--text3); font-size: .85rem; }
+    #presence-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; min-height: 200px; }
+
+    /* ══════════ ACTIVITY / CALENDAR ══════════ */
+    .activity-item {
+      display: flex; align-items: center; gap: 8px; background: var(--card2);
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+      margin-bottom: 8px; flex-wrap: wrap; transition: border-color .2s;
+    }
+    .activity-item:hover { border-color: var(--accent); }
+    .activity-item.running { border-color: var(--accent3); }
+    .activity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .activity-info { flex: 1 1 60%; min-width: 0; }
+    .activity-name { font-weight: 600; font-size: .85rem; }
+    .activity-meta { font-size: .72rem; color: var(--text3); margin-top: 2px; }
+    .activity-timer { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--accent2); min-width: 55px; text-align: right; }
+    .activity-timer.running { color: var(--accent3); }
+    .activity-actions { display: flex; gap: 4px; margin-left: auto; }
+
+    .calendar-event-item {
+      display: flex; align-items: center; gap: 10px; background: var(--card2);
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 8px; flex-wrap: wrap; transition: border-color .2s;
+    }
+    .calendar-event-item.overdue { border-color: var(--danger); background: rgba(248,113,113,.06); }
+    .calendar-event-info { flex: 1 1 60%; min-width: 0; }
+    .calendar-event-title { font-weight: 600; font-size: .85rem; }
+    .calendar-event-date { font-size: .72rem; color: var(--text3); margin-top: 2px; }
+    .calendar-event-note { font-size: .72rem; color: var(--text2); margin-top: 2px; font-style: italic; }
+    .calendar-event-countdown { font-family: var(--font-display); font-size: .9rem; font-weight: 700; min-width: 100px; text-align: right; color: var(--accent2); }
+    .calendar-event-countdown.urgent { color: var(--warning); }
+    .calendar-event-countdown.overdue { color: var(--danger); }
+
+    /* ══════════ LEADERBOARD ══════════ */
+    .lb-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .lb-tab {
+      padding: 5px 14px; border-radius: 999px; font-size: .78rem; font-weight: 600;
+      cursor: pointer; background: var(--card2); border: 1px solid var(--border); color: var(--text3);
+    }
+    .lb-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .lb-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      border-radius: 10px; margin-bottom: 5px; background: var(--card2); border: 1px solid var(--border);
+    }
+    .lb-rank { font-family: var(--font-display); font-weight: 800; font-size: .9rem; min-width: 28px; text-align: center; color: var(--text3); }
+    .lb-name { flex: 1; font-size: .85rem; font-weight: 500; }
+    .lb-time { font-family: var(--font-display); font-weight: 700; font-size: .85rem; color: var(--accent2); }
+
+    /* ══════════ MODAL ══════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+      z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; width: 100%; max-width: 400px; animation: slideUp .22s ease;
+    }
+    .modal-title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* ══════════ TOAST ══════════ */
+    #toast-container {
+      position: fixed; bottom: 20px; right: 16px; z-index: 999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      border-radius: 10px; padding: 10px 14px; font-size: .82rem; font-weight: 500;
+      box-shadow: var(--shadow); animation: slideIn .25s ease;
+    }
+    .toast.success { border-left-color: var(--accent3); }
+    .toast.error { border-left-color: var(--danger); }
+    @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ══════════ LOADING ══════════ */
+    #loading-screen {
+      position: fixed; inset: 0; background: var(--bg); z-index: 999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    }
+    .spinner {
+      width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--border);
+      border-top-color: var(--accent); animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+    .flex { display: flex; } .items-center { align-items: center; } .gap-2 { gap: 6px; }
+    .mt-2 { margin-top: 6px; } .mt-3 { margin-top: 10px; }
+    .text-sm { font-size: .78rem; color: var(--text2); }
+    .badge {
+      display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+      font-size: .7rem; font-weight: 600;
+    }
+    .badge-purple { background: rgba(108,99,255,.2); color: var(--accent2); }
+    .badge-green { background: rgba(52,211,153,.2); color: var(--accent3); }
+
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: .6; } }
+
+    /* Auth */
+    #auth-screen { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .auth-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 380px; box-shadow: var(--shadow); text-align: center; }
+    .auth-logo { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; color: var(--accent2); margin-bottom: 20px; }
+    .auth-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+    .auth-tab { flex: 1; padding: 10px; font-weight: 600; cursor: pointer; border-radius: 8px; background: var(--bg2); color: var(--text3); border: 1px solid var(--border); transition: .2s; font-size: .82rem; }
+    .auth-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .auth-form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+
+    @media (max-width:480px) {
+      .main { padding: 12px; }
+      .topbar { padding: 0 10px; height: 50px; }
+      .topbar-logo { font-size: 1rem; }
+      .user-badge { padding: 2px 10px 2px 2px; font-size: .72rem; }
+      .stat-card { padding: 12px; }
+      .stat-card-value { font-size: 1.4rem; }
+      .activity-actions .btn { padding: 4px 8px; font-size: .7rem; }
+      .calendar-event-countdown { min-width: 80px; font-size: .8rem; }
+      .btn { padding: 6px 12px; font-size: .78rem; }
+      .form-row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -146,6 +271,7 @@
 
 <div id="toast-container"></div>
 
+<!-- AUTH -->
 <div id="auth-screen" class="hidden">
   <div class="auth-box">
     <div class="auth-logo">studyBuddy<span>.</span></div>
@@ -166,6 +292,7 @@
   </div>
 </div>
 
+<!-- APP -->
 <div id="app" class="hidden">
   <header class="topbar">
     <div class="topbar-logo">studyBuddy<span>.</span></div>
@@ -193,6 +320,7 @@
   </nav>
 
   <main class="main">
+    <!-- HOME -->
     <div id="tab-home">
       <div id="active-timer-card" class="card hidden" style="border-color:var(--accent3);background:rgba(52,211,153,.06)">
         <div class="flex items-center gap-3">
@@ -214,6 +342,7 @@
         </div>
       </div>
 
+      <!-- Hızlı Pomodoro -->
       <div class="card">
         <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Hızlı Pomodoro Başlat</div>
         <div class="form-row">
@@ -223,6 +352,7 @@
         <button class="btn btn-primary" id="start-quick-pomodoro-btn" style="margin-top:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Başlat</button>
       </div>
 
+      <!-- Günlük Hedef -->
       <div class="card">
         <div class="card-title">🎯 Günlük Hedef</div>
         <div class="flex items-center gap-2" style="margin-bottom:8px;flex-wrap:wrap">
@@ -237,12 +367,16 @@
         <div class="text-sm mt-2" id="goal-status-text">Bugün henüz çalışma kaydı yok.</div>
       </div>
 
+      <!-- ŞU AN ÇALIŞANLAR (ANİMASYONLU) -->
       <div id="presence-section">
         <div class="card-title">👥 Şu An Çalışanlar <span id="online-count-badge" class="badge badge-green" style="margin-left:auto">0 kişi</span></div>
-        <div id="presence-container"><div class="empty-presence" id="empty-presence"><p>Masa boş, ilk sen başla! 🚀</p></div></div>
+        <div id="presence-container">
+          <div class="empty-presence" id="empty-presence"><p>Masa boş, ilk sen başla! 🚀</p></div>
+        </div>
       </div>
     </div>
 
+    <!-- ACTIVITIES -->
     <div id="tab-activities" class="hidden">
       <div class="card">
         <div class="card-title">➕ Yeni Etkinlik</div>
@@ -257,22 +391,21 @@
         </div>
         <button class="btn btn-primary" id="add-activity-btn">Etkinlik Ekle</button>
       </div>
-
       <div class="card">
         <div class="card-title">✍️ Manuel Çalışma Ekle</div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Süre (dakika)</label><input type="number" class="form-input" id="manual-minutes" min="1" placeholder="60" /></div>
-          <div class="form-group"><label class="form-label">Not (isteğe bağlı)</label><input type="text" class="form-input" id="manual-note" placeholder="Ne çalıştın?" /></div>
+          <div class="form-group"><label class="form-label">Not</label><input type="text" class="form-input" id="manual-note" placeholder="Ne çalıştın?" /></div>
         </div>
         <button class="btn btn-primary mt-2" id="manual-add-btn">Süreyi Kaydet</button>
       </div>
-
       <div class="card">
         <div class="card-title">📋 Etkinlik Listesi</div>
         <div id="activity-list"><div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div></div>
       </div>
     </div>
 
+    <!-- CALENDAR -->
     <div id="tab-calendar" class="hidden">
       <div class="card">
         <div class="card-title">📅 Yeni Takvim Etkinliği</div>
@@ -289,6 +422,7 @@
       </div>
     </div>
 
+    <!-- STATS -->
     <div id="tab-stats" class="hidden">
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-card-label">Bugün</div><div class="stat-card-value" id="stat-today">0</div><div class="stat-card-sub">dakika</div></div>
@@ -300,6 +434,7 @@
       <div class="card"><div class="card-title">Aylık Karşılaştırma</div><canvas id="chart-monthly" height="70"></canvas></div>
     </div>
 
+    <!-- LEADERBOARD -->
     <div id="tab-leaderboard" class="hidden">
       <div class="card">
         <div class="card-title">🏆 Liderlik Tablosu</div>
@@ -315,18 +450,20 @@
   </main>
 </div>
 
+<!-- MODALS -->
 <div class="modal-overlay hidden" id="modal-username">
   <div class="modal-box">
     <div class="modal-title">Profili Düzenle</div>
     <div class="form-group"><label class="form-label">Kullanıcı Adı</label><input type="text" class="form-input" id="new-username-input" maxlength="30" /></div>
-    <div class="form-group"><label class="form-label">Yeni Şifre (İsteğe bağlı)</label><input type="password" class="form-input" id="new-password-input" /></div>
+    <div class="form-group"><label class="form-label">Karakterin (Emoji)</label>
+      <div id="emoji-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="modal-username-cancel">İptal</button>
       <button class="btn btn-primary" id="modal-username-save">Kaydet</button>
     </div>
   </div>
 </div>
-
 <div class="modal-overlay hidden" id="modal-goal">
   <div class="modal-box">
     <div class="modal-title">Günlük Hedef</div>
@@ -339,7 +476,7 @@
 </div>
 
 <script>
-  // ══════════ FIREBASE YAPILANDIRMASI (KENDİ BİLGİLERİNİZİ GİRİN) ══════════
+  /* ══════════ FIREBASE CONFIG (KENDİ BİLGİLERİNİZİ GİRİN) ══════════ */
   const firebaseConfig = {
     apiKey: "AIzaSyDCuodwSDZ_7ExK8hT6cTTV68ANs7OCLc4",
     authDomain: "calisalim.firebaseapp.com",
@@ -356,181 +493,254 @@
   const db = firebase.firestore();
   const rtdb = firebase.database();
 
-  // ══════════ GLOBAL DEĞİŞKENLER ══════════
+  // ══════════ GLOBAL ══════════
   let currentUser = null, userProfile = null, activities = [], sessions = [];
   let runningTimers = {}, calendarEvents = [], calendarInterval = null;
   let weeklyChart = null, monthlyChart = null, lbPeriod = 'daily', lbRefreshTimer = null;
   let presenceHeartbeat = null;
 
-  // ══════════ YARDIMCI FONKSİYONLAR ══════════
-  const $ = id => document.getElementById(id);
+  const AVATAR_OPTIONS = ["👨‍💻","👩‍💻","🧑‍🎓","👩‍🔬","🧑‍💼","👨‍🎨","🧑‍🍳","🦸","🧙","👩‍🚀","🧑‍🏫","👨‍🔧","👩‍🎤","🧑‍🌾","👨‍🚒","🕵️","💂","👷","🤴","👸"];
 
-  function toast(msg, type = 'info') {
+  // Yardımcılar
+  const $ = id => document.getElementById(id);
+  function toast(msg, type='info') {
     const el = document.createElement('div');
-    el.className = 'toast ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
+    el.className = 'toast '+(type==='success'?'success':type==='error'?'error':'');
     el.textContent = msg;
     $('toast-container').appendChild(el);
     setTimeout(() => el.remove(), 3000);
   }
+  function formatMin(min) { if(!min||min<1) return '0 dk'; if(min<60) return min+' dk'; const h=Math.floor(min/60),m=min%60; return h+'s '+(m>0?m+'dk':''); }
+  function formatMinLong(min) { if(!min||min<1) return {main:'0',sub:'dk'}; if(min<60) return {main:String(min),sub:'dk'}; const h=Math.floor(min/60),m=min%60; return {main:String(h),sub:'sa'+(m>0?' '+m+'dk':'')}; }
+  function formatTimer(sec) { const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60; if(h>0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+  function dateKey(d=new Date()) { return d.toISOString().split('T')[0]; }
+  function weekKey(d=new Date()) { const nd=new Date(d); nd.setHours(0,0,0,0); nd.setDate(nd.getDate()-nd.getDay()+1); return dateKey(nd); }
+  function monthKey(d=new Date()) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+  function yearKey(d=new Date()) { return `${d.getFullYear()}`; }
+  function randomName() { const a=['Hızlı','Meraklı','Odaklı','Kararlı','Enerjik','Sabırlı'],b=['Kartal','Aslan','Ejderha','Panda','Köpek','Kaplan']; return a[Math.floor(Math.random()*a.length)]+b[Math.floor(Math.random()*b.length)]+Math.floor(Math.random()*999); }
+  const CATEGORY_META = { coding:{label:'💻 Kodlama',color:'#6c63ff'},design:{label:'🎨 Tasarım',color:'#f472b6'},meeting:{label:'🗣️ Toplantı',color:'#fb923c'},research:{label:'🔬 Araştırma',color:'#34d399'},writing:{label:'✍️ Yazma',color:'#60a5fa'},other:{label:'📌 Diğer',color:'#9ca3af'} };
+  function getDummyEmail(nick) { return nick.toLowerCase().replace(/[^a-z0-9]/g,'')+'@calisalim.local'; }
 
-  function formatMin(min) { if (!min || min < 1) return '0 dk'; if (min < 60) return min + ' dk'; const h = Math.floor(min / 60), m = min % 60; return h + 's ' + (m > 0 ? m + 'dk' : ''); }
-  function formatMinLong(min) { if (!min || min < 1) return { main: '0', sub: 'dk' }; if (min < 60) return { main: String(min), sub: 'dk' }; const h = Math.floor(min / 60), m = min % 60; return { main: String(h), sub: 'sa' + (m > 0 ? ' ' + m + 'dk' : '') }; }
-  function formatTimer(sec) { const h = Math.floor(sec / 3600); const m = Math.floor((sec % 3600) / 60); const s = sec % 60; if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
-  function dateKey(date = new Date()) { return date.toISOString().split('T')[0]; }
-  function weekKey(date = new Date()) { const d = new Date(date); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay() + 1); return dateKey(d); }
-  function monthKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; }
-  function yearKey(date = new Date()) { return `${date.getFullYear()}`; }
-  function randomName() { const adj = ['Hızlı', 'Meraklı', 'Odaklı', 'Kararlı', 'Enerjik', 'Sabırlı']; const noun = ['Kartal', 'Aslan', 'Ejderha', 'Panda', 'Köpek', 'Kaplan']; return adj[Math.floor(Math.random() * adj.length)] + noun[Math.floor(Math.random() * noun.length)] + Math.floor(Math.random() * 999); }
-  const CATEGORY_META = { coding: { label: '💻 Kodlama', color: '#6c63ff' }, design: { label: '🎨 Tasarım', color: '#f472b6' }, meeting: { label: '🗣️ Toplantı', color: '#fb923c' }, research: { label: '🔬 Araştırma', color: '#34d399' }, writing: { label: '✍️ Yazma', color: '#60a5fa' }, other: { label: '📌 Diğer', color: '#9ca3af' } };
-
-  function getDummyEmail(nick) { return nick.toLowerCase().replace(/[^a-z0-9]/g, '') + '@calisalim.local'; }
-
-  // ══════════ TEMA & AUTH UI ══════════
-  let currentTheme = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', currentTheme);
-  if (currentTheme === 'light') { $('icon-moon').classList.add('hidden'); $('icon-sun').classList.remove('hidden'); }
-  $('theme-toggle-btn').addEventListener('click', () => {
-    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    localStorage.setItem('theme', currentTheme);
+  // Tema
+  let currentTheme = localStorage.getItem('theme')||'dark';
+  document.documentElement.setAttribute('data-theme',currentTheme);
+  if(currentTheme==='light'){ $('icon-moon').classList.add('hidden'); $('icon-sun').classList.remove('hidden'); }
+  $('theme-toggle-btn').addEventListener('click',()=>{
+    currentTheme = currentTheme==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',currentTheme);
+    localStorage.setItem('theme',currentTheme);
     $('icon-moon').classList.toggle('hidden'); $('icon-sun').classList.toggle('hidden');
   });
 
-  $('tab-login').addEventListener('click', () => { $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); $('form-login').classList.remove('hidden'); $('form-register').classList.add('hidden'); });
-  $('tab-register').addEventListener('click', () => { $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); $('form-register').classList.remove('hidden'); $('form-login').classList.add('hidden'); });
-
-  $('btn-do-login').addEventListener('click', async () => {
-    const nick = $('auth-login-nick').value.trim(), pass = $('auth-login-pass').value;
-    if (!nick || !pass) { toast('Nick ve şifre giriniz', 'error'); return; }
-    try { $('btn-do-login').textContent = 'Bekleyin...'; await auth.signInWithEmailAndPassword(getDummyEmail(nick), pass); } catch (err) { toast('Giriş başarısız.', 'error'); } finally { $('btn-do-login').textContent = 'Giriş Yap'; }
+  // Auth UI
+  $('tab-login').addEventListener('click',()=>{$('tab-login').classList.add('active');$('tab-register').classList.remove('active');$('form-login').classList.remove('hidden');$('form-register').classList.add('hidden');});
+  $('tab-register').addEventListener('click',()=>{$('tab-register').classList.add('active');$('tab-login').classList.remove('active');$('form-register').classList.remove('hidden');$('form-login').classList.add('hidden');});
+  $('btn-do-login').addEventListener('click',async()=>{
+    const nick=$('auth-login-nick').value.trim(),pass=$('auth-login-pass').value;
+    if(!nick||!pass){ toast('Nick ve şifre giriniz','error'); return; }
+    try{$('btn-do-login').textContent='Bekleyin...'; await auth.signInWithEmailAndPassword(getDummyEmail(nick),pass);}
+    catch(err){ toast('Giriş başarısız.','error'); } finally{$('btn-do-login').textContent='Giriş Yap';}
   });
-  $('btn-do-register').addEventListener('click', async () => {
-    const nick = $('auth-reg-nick').value.trim(), pass = $('auth-reg-pass').value;
-    if (!nick || pass.length < 6) { toast('Nick ve en az 6 haneli şifre giriniz', 'error'); return; }
-    try { $('btn-do-register').textContent = 'Bekleyin...'; const cred = await auth.createUserWithEmailAndPassword(getDummyEmail(nick), pass); await db.collection('users').doc(cred.user.uid).set({ displayName: nick, dailyGoal: 120, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); } catch (err) { if (err.code === 'auth/email-already-in-use') toast('Bu nick zaten alınmış.', 'error'); else toast('Kayıt başarısız.', 'error'); } finally { $('btn-do-register').textContent = 'Kayıt Ol'; }
+  $('btn-do-register').addEventListener('click',async()=>{
+    const nick=$('auth-reg-nick').value.trim(),pass=$('auth-reg-pass').value;
+    if(!nick||pass.length<6){ toast('Nick ve en az 6 haneli şifre','error'); return; }
+    try{$('btn-do-register').textContent='Bekleyin...'; const cred=await auth.createUserWithEmailAndPassword(getDummyEmail(nick),pass); await db.collection('users').doc(cred.user.uid).set({displayName:nick,dailyGoal:120,avatar:'👤',createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
+    catch(err){ if(err.code==='auth/email-already-in-use') toast('Bu nick alınmış.','error'); else toast('Kayıt başarısız.','error'); } finally{$('btn-do-register').textContent='Kayıt Ol';}
   });
-  $('btn-logout').addEventListener('click', () => { if (confirm('Çıkış yapmak istediğinize emin misiniz?')) auth.signOut(); });
+  $('btn-logout').addEventListener('click',()=>{ if(confirm('Çıkış yap?')) auth.signOut(); });
 
-  auth.onAuthStateChanged(async user => {
+  auth.onAuthStateChanged(async user=>{
     $('loading-screen').classList.add('hidden');
-    if (user) {
-      currentUser = user; await loadUserProfile(); setupPresence(); listenSessions(); listenActivities(); listenCalendarEvents(); renderUI();
+    if(user){
+      currentUser=user; await loadUserProfile(); setupPresence(); listenSessions(); listenActivities(); listenCalendarEvents(); renderUI();
       $('auth-screen').classList.add('hidden'); $('app').classList.remove('hidden');
     } else {
       $('app').classList.add('hidden'); $('auth-screen').classList.remove('hidden');
-      activities = []; sessions = []; calendarEvents = [];
-      if (presenceHeartbeat) clearInterval(presenceHeartbeat);
-      if (lbRefreshTimer) clearInterval(lbRefreshTimer);
-      if (calendarInterval) clearInterval(calendarInterval);
+      activities=[]; sessions=[]; calendarEvents=[];
+      if(presenceHeartbeat)clearInterval(presenceHeartbeat);
+      if(lbRefreshTimer)clearInterval(lbRefreshTimer);
+      if(calendarInterval)clearInterval(calendarInterval);
     }
   });
 
-  // ══════════ PROFİL ══════════
-  async function loadUserProfile() {
-    const ref = db.collection('users').doc(currentUser.uid); const snap = await ref.get();
-    if (!snap.exists) { userProfile = { displayName: randomName(), dailyGoal: 120 }; await ref.set(userProfile); }
-    else userProfile = snap.data();
+  // Profil
+  async function loadUserProfile(){
+    const ref=db.collection('users').doc(currentUser.uid),snap=await ref.get();
+    if(!snap.exists){ userProfile={displayName:randomName(),dailyGoal:120,avatar:'👤'}; await ref.set(userProfile); }
+    else userProfile=snap.data();
+    if(!userProfile.avatar) userProfile.avatar='👤';
     updateUserBadge();
   }
-  function updateUserBadge() { $('user-display-name').textContent = userProfile.displayName || 'Anonim'; $('user-avatar-text').textContent = (userProfile.displayName || 'A').charAt(0).toUpperCase(); $('goal-minutes').textContent = userProfile.dailyGoal || 120; }
-  async function saveUserProfile(updates) { Object.assign(userProfile, updates); await db.collection('users').doc(currentUser.uid).update(updates); updateUserBadge(); }
-
-  // ══════════ PRESENCE ══════════
-  function setupPresence() {
-    const uid = currentUser.uid, presRef = rtdb.ref(`presence/${uid}`), connRef = rtdb.ref('.info/connected');
-    connRef.on('value', snap => { if (!snap.val()) return; presRef.onDisconnect().remove(); presRef.set({ uid, name: userProfile.displayName, online: true, since: Date.now(), lastSeen: Date.now() }).catch(() => {}); });
-    clearInterval(presenceHeartbeat); presenceHeartbeat = setInterval(() => presRef.update({ lastSeen: Date.now() }).catch(() => {}), 30000);
-    window.addEventListener('beforeunload', () => { presRef.remove(); clearInterval(presenceHeartbeat); });
-    rtdb.ref('presence').on('value', snap => {
-      const users = [], now = Date.now(); snap.forEach(c => { const v = c.val(); if (v && v.lastSeen && (now - v.lastSeen) < 90000) users.push(v); else if (v && !v.lastSeen && v.since && (now - v.since) < 90000) users.push(v); });
-      renderPresence(users); $('online-count-badge').textContent = users.length + ' kişi';
-    }, err => { console.error(err); renderPresence([{ uid, name: userProfile.displayName, since: Date.now(), lastSeen: Date.now() }]); });
+  function updateUserBadge(){
+    $('user-display-name').textContent=userProfile.displayName||'Anonim';
+    $('user-avatar-text').textContent=userProfile.avatar||'👤';
   }
-  function renderPresence(users) {
-    const container = $('presence-container'), emptyEl = $('empty-presence');
-    if (users.length === 0) { emptyEl.classList.remove('hidden'); const old = container.querySelector('#desk-svg'); if (old) old.remove(); return; }
+  async function saveUserProfile(updates){
+    Object.assign(userProfile,updates);
+    await db.collection('users').doc(currentUser.uid).update(updates);
+    updateUserBadge();
+    // Güncel presence'ı da yenile
+    rtdb.ref(`presence/${currentUser.uid}`).update({name:userProfile.displayName,avatar:userProfile.avatar}).catch(()=>{});
+  }
+
+  // Presence (Animasyonlu masa)
+  function setupPresence(){
+    const uid=currentUser.uid, presRef=rtdb.ref(`presence/${uid}`), connRef=rtdb.ref('.info/connected');
+    const presenceData=()=>({
+      uid, name:userProfile.displayName, avatar:userProfile.avatar||'👤',
+      online:true, since:Date.now(), lastSeen:Date.now()
+    });
+    connRef.on('value',snap=>{
+      if(!snap.val())return;
+      presRef.onDisconnect().remove();
+      presRef.set(presenceData()).catch(()=>{});
+    });
+    clearInterval(presenceHeartbeat);
+    presenceHeartbeat=setInterval(()=>presRef.update({lastSeen:Date.now()}).catch(()=>{}),30000);
+    window.addEventListener('beforeunload',()=>{ presRef.remove(); clearInterval(presenceHeartbeat); });
+    rtdb.ref('presence').on('value',snap=>{
+      const users=[], now=Date.now();
+      snap.forEach(c=>{ const v=c.val(); if(v&&v.lastSeen&&(now-v.lastSeen)<90000) users.push(v); else if(v&&!v.lastSeen&&v.since&&(now-v.since)<90000) users.push(v); });
+      renderPresence(users);
+      $('online-count-badge').textContent=users.length+' kişi';
+    },err=>{ console.error(err); renderPresence([{uid,name:userProfile.displayName,avatar:userProfile.avatar,since:Date.now(),lastSeen:Date.now()}]); });
+  }
+
+  function renderPresence(users){
+    const container=$('presence-container'), emptyEl=$('empty-presence');
+    if(users.length===0){
+      emptyEl.classList.remove('hidden');
+      const old=container.querySelector('#desk-svg'); if(old)old.remove();
+      return;
+    }
     emptyEl.classList.add('hidden');
-    const W = 560, H = 260, cx = W / 2, cy = H / 2 + 10, rx = 180, ry = 90, display = users.slice(0, 10), n = display.length;
-    const COLORS = ['#6c63ff', '#f472b6', '#34d399', '#fb923c', '#60a5fa', '#a78bfa', '#fbbf24', '#f87171', '#2dd4bf', '#e879f9'];
-    const chairs = display.map((u, i) => ` <g transform="translate(${cx + rx * Math.cos(2 * Math.PI * i / n - Math.PI / 2)},${cy + ry * Math.sin(2 * Math.PI * i / n - Math.PI / 2)})"><circle r="18" fill="${COLORS[i%10]}" opacity=".35"/><circle r="14" fill="${COLORS[i%10]}"/><text text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="10" font-weight="700">${(u.name||'?').charAt(0).toUpperCase()}</text><circle r="3" cx="16" cy="-16" fill="#34d399"><animate attributeName="r" values="2;4;2" dur="2s" repeatCount="indefinite"/></circle></g>`).join('');
-    const svg = `<svg id="desk-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto"><ellipse cx="${cx}" cy="${cy}" rx="145" ry="68" fill="var(--card2)" stroke="var(--border)" stroke-width="2"/><text x="${cx}" y="${cy+4}" text-anchor="middle" dominant-baseline="central" fill="var(--text3)" font-size="11">Çalışma Masası</text>${chairs}</svg>`;
-    const oldSvg = container.querySelector('#desk-svg'); if (oldSvg) oldSvg.remove(); container.insertAdjacentHTML('beforeend', svg);
+
+    const W=600, H=300, cx=W/2, cy=H/2+20, rx=200, ry=100;
+    const display=users.slice(0,12), n=display.length;
+    const chairs = display.map((u,i)=>{
+      const angle = (2*Math.PI*i/n) - Math.PI/2;
+      const x = cx + rx*Math.cos(angle);
+      const y = cy + ry*Math.sin(angle);
+      const avatar = u.avatar || '👤';
+      const name = (u.name||'Anonim').substring(0,15);
+      return `<g transform="translate(${x},${y})">
+        <!-- sandalye gölgesi -->
+        <ellipse cx="0" cy="18" rx="22" ry="8" fill="rgba(0,0,0,0.4)" />
+        <!-- karakter emoji -->
+        <text text-anchor="middle" dominant-baseline="central" font-size="28" y="-5" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,.3));">${avatar}</text>
+        <!-- isim etiketi -->
+        <rect x="-40" y="22" width="80" height="20" rx="10" fill="var(--card2)" stroke="var(--border)" stroke-width="1" />
+        <text text-anchor="middle" dominant-baseline="central" y="32" font-size="9" fill="var(--text)">${name}</text>
+        <!-- online noktası -->
+        <circle cx="24" cy="-12" r="4" fill="#34d399">
+          <animate attributeName="r" values="3;6;3" dur="2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
+        </circle>
+      </g>`;
+    }).join('');
+
+    const svg=`
+    <svg id="desk-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+      <defs>
+        <linearGradient id="deskGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="var(--card2)" />
+          <stop offset="100%" stop-color="var(--border)" />
+        </linearGradient>
+      </defs>
+      <!-- Masa -->
+      <ellipse cx="${cx}" cy="${cy}" rx="150" ry="70" fill="url(#deskGrad)" stroke="var(--border)" stroke-width="2" />
+      <text x="${cx}" y="${cy+4}" text-anchor="middle" dominant-baseline="central" fill="var(--text3)" font-size="12" font-weight="600">Çalışma Masası</text>
+      ${chairs}
+    </svg>`;
+
+    const oldSvg=container.querySelector('#desk-svg'); if(oldSvg)oldSvg.remove();
+    container.insertAdjacentHTML('beforeend', svg);
   }
 
-  // ══════════ SESSIONS ══════════
-  function listenSessions() { db.collection('sessions').where('userId', '==', currentUser.uid).where('dateKey', '==', dateKey()).onSnapshot(snap => { sessions = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateGoalDisplay(); if ($('tab-stats').offsetParent !== null) renderStats(); }); }
-  async function addSession(minutes, note = '', activityId = null) { if (!minutes || minutes < 1) return; const now = new Date(); await db.collection('sessions').add({ userId: currentUser.uid, userName: userProfile.displayName, minutes: parseInt(minutes), note, activityId, dateKey: dateKey(now), weekKey: weekKey(now), monthKey: monthKey(now), yearKey: yearKey(now), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); updateLeaderboardCache(parseInt(minutes)); }
-  async function updateLeaderboardCache(minutes) { const uid = currentUser.uid, name = userProfile.displayName, now = new Date(), lbRef = db.collection('leaderboard').doc(uid), snap = await lbRef.get(), data = snap.exists ? snap.data() : {}; await lbRef.set({ userId: uid, userName: name, daily: (data.daily || 0) + (dateKey(now) === (data.lastDailyKey || '') ? minutes : minutes), weekly: (data.weekly || 0) + (weekKey(now) === (data.lastWeeklyKey || '') ? minutes : minutes), monthly: (data.monthly || 0) + (monthKey(now) === (data.lastMonthKey || '') ? minutes : minutes), yearly: (data.yearly || 0) + (yearKey(now) === (data.lastYearKey || '') ? minutes : minutes), lastDailyKey: dateKey(now), lastWeeklyKey: weekKey(now), lastMonthKey: monthKey(now), lastYearKey: yearKey(now), updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); }
+  // Sessions, Goal, Activities, Calendar, Stats, Leaderboard (öncekiyle aynı) - kısaltıldı
+  function listenSessions(){ db.collection('sessions').where('userId','==',currentUser.uid).where('dateKey','==',dateKey()).onSnapshot(snap=>{ sessions=snap.docs.map(d=>({id:d.id,...d.data()})); updateGoalDisplay(); if($('tab-stats').offsetParent!==null) renderStats(); }); }
+  async function addSession(minutes,note='',activityId=null){ if(!minutes||minutes<1)return; const now=new Date(); await db.collection('sessions').add({userId:currentUser.uid,userName:userProfile.displayName,minutes:parseInt(minutes),note,activityId,dateKey:dateKey(now),weekKey:weekKey(now),monthKey:monthKey(now),yearKey:yearKey(now),createdAt:firebase.firestore.FieldValue.serverTimestamp()}); updateLeaderboardCache(parseInt(minutes)); }
+  async function updateLeaderboardCache(minutes){ const uid=currentUser.uid,name=userProfile.displayName,now=new Date(),lbRef=db.collection('leaderboard').doc(uid),snap=await lbRef.get(),data=snap.exists?snap.data():{}; await lbRef.set({userId:uid,userName:name,daily:(data.daily||0)+(dateKey(now)===(data.lastDailyKey||'')?minutes:minutes),weekly:(data.weekly||0)+(weekKey(now)===(data.lastWeeklyKey||'')?minutes:minutes),monthly:(data.monthly||0)+(monthKey(now)===(data.lastMonthKey||'')?minutes:minutes),yearly:(data.yearly||0)+(yearKey(now)===(data.lastYearKey||'')?minutes:minutes),lastDailyKey:dateKey(now),lastWeeklyKey:weekKey(now),lastMonthKey:monthKey(now),lastYearKey:yearKey(now),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); }
+  function updateGoalDisplay(){ const total=sessions.reduce((s,sess)=>s+(sess.minutes||0),0); const goal=userProfile.dailyGoal||120; const pct=Math.min(100,Math.round(total/goal*100)); $('today-minutes').textContent=total; $('goal-minutes').textContent=goal; $('goal-pct').textContent=pct; $('goal-bar').style.width=pct+'%'; if(pct>=100){ $('goal-bar').classList.add('green'); $('goal-status-text').textContent='🎉 Günlük hedefe ulaştın!'; } else { $('goal-bar').classList.remove('green'); $('goal-status-text').textContent=`Hedefe ${formatMin(goal-total)} kaldı.`; } $('stat-today').textContent=total; }
+  function listenActivities(){ db.collection('users').doc(currentUser.uid).collection('activities').orderBy('createdAt','desc').onSnapshot(snap=>{ activities=snap.docs.map(d=>({id:d.id,...d.data()})); activities.forEach(a=>{ if(a.startTimestamp&&!runningTimers[a.id]) _attachLocalInterval(a.id,a.startTimestamp); }); renderActivities(); }); }
+  function _attachLocalInterval(id,startTimestamp){ if(runningTimers[id])return; runningTimers[id]={startTimestamp,get elapsed(){return Math.floor((Date.now()-this.startTimestamp)/1000);},interval:setInterval(()=>{const el=$(`timer-${id}`);if(el){const sec=Math.floor((Date.now()-startTimestamp)/1000);el.textContent=formatTimer(sec);const act=activities.find(a=>a.id===id);if(act){const pb=document.querySelector(`#act-item-${id} .progress-bar`);if(pb)pb.style.width=Math.min(100,Math.round(sec/60/act.estimated*100))+'%';}}},1000)};}
+  async function addActivity(){ const name=$('act-name').value.trim(),estimated=parseInt($('act-estimated').value),category=$('act-category').value; if(!name){toast('Ad giriniz.','error');return;} try{ await db.collection('users').doc(currentUser.uid).collection('activities').add({name,estimated,category,elapsed:0,startTimestamp:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); $('act-name').value='';$('act-estimated').value=''; toast('Eklendi!','success'); }catch(err){toast('Hata!','error');} }
+  function renderActivities(){ const list=$('activity-list'); if(!activities.length){list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div>';return;} list.innerHTML=activities.map(act=>{ const meta=CATEGORY_META[act.category]||CATEGORY_META.other; const isRun=!!runningTimers[act.id]; const timerSec=isRun?Math.floor((Date.now()-runningTimers[act.id].startTimestamp)/1000):(act.elapsed||0); const kalan=Math.max(0,(act.estimated||0)-Math.floor(timerSec/60)); const pct=Math.min(100,Math.round(timerSec/60/(act.estimated||1)*100)); return `<div class="activity-item ${isRun?'running':''}" id="act-item-${act.id}"><div class="activity-dot" style="background:${meta.color}"></div><div class="activity-info"><div class="activity-name">${act.name}</div><div class="activity-meta">${meta.label} · ${act.estimated}dk · Kalan: ${kalan}dk</div><div class="progress-wrap mt-2" style="height:4px"><div class="progress-bar" style="width:${pct}%;background:${meta.color}"></div></div></div><div class="activity-timer ${isRun?'running':''}" id="timer-${act.id}">${formatTimer(timerSec)}</div><div class="activity-actions"><button class="btn btn-sm ${isRun?'btn-danger':'btn-success'}" onclick="toggleTimer('${act.id}')">${isRun?'Durdur':'Başla'}</button><button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')">↺</button><button class="btn btn-sm btn-secondary btn-icon" onclick="deleteActivity('${act.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div></div>`; }).join(''); }
+  function toggleTimer(id){ if(runningTimers[id]) stopTimer(id,true); else startTimer(id); }
+  async function startTimer(id){ for(const tid of Object.keys(runningTimers).filter(t=>t!==id)) await stopTimer(tid,true); const act=activities.find(a=>a.id===id); if(!act)return; const prev=act.elapsed||0; const st=Date.now()-prev*1000; await _saveActivityState(id,prev,st); _attachLocalInterval(id,st); renderActivities(); updateActiveTimerCard(); toast('Başlatıldı ▶','success'); }
+  async function stopTimer(id,save=true){ if(!runningTimers[id])return; clearInterval(runningTimers[id].interval); const st=runningTimers[id].startTimestamp; const elapsed=Math.floor((Date.now()-st)/1000); delete runningTimers[id]; await _saveActivityState(id,elapsed,null); if(save&&elapsed>0){ const min=Math.floor(elapsed/60); if(min>0){ const act=activities.find(a=>a.id===id); await addSession(min,act?act.name:'',id); toast(`${min} dk kaydedildi! ✓`,'success'); } } renderActivities(); updateActiveTimerCard(); }
+  async function resetTimer(id){ if(runningTimers[id]){ clearInterval(runningTimers[id].interval); delete runningTimers[id]; } await _saveActivityState(id,0,null); renderActivities(); updateActiveTimerCard(); toast('Sıfırlandı.','info'); }
+  async function _saveActivityState(id,elapsed,startTimestamp){ await db.collection('users').doc(currentUser.uid).collection('activities').doc(id).update({elapsed,startTimestamp}); }
 
-  // ══════════ GÜNLÜK HEDEF ══════════
-  function updateGoalDisplay() { const total = sessions.reduce((s, sess) => s + (sess.minutes || 0), 0); const goal = userProfile.dailyGoal || 120; const pct = Math.min(100, Math.round(total / goal * 100)); $('today-minutes').textContent = total; $('goal-minutes').textContent = goal; $('goal-pct').textContent = pct; $('goal-bar').style.width = pct + '%'; if (pct >= 100) { $('goal-bar').classList.add('green'); $('goal-status-text').textContent = '🎉 Günlük hedefe ulaştın!'; } else { $('goal-bar').classList.remove('green'); $('goal-status-text').textContent = `Hedefe ${formatMin(goal - total)} kaldı.`; } $('stat-today').textContent = total; }
+  // Calendar (öncekiyle aynı)
+  function listenCalendarEvents(){ db.collection('users').doc(currentUser.uid).collection('calendarEvents').orderBy('dateTime','asc').onSnapshot(snap=>{ calendarEvents=snap.docs.map(d=>({id:d.id,...d.data()})); renderCalendarEvents(); }); }
+  function getTimeRemaining(dateTime){ const now=Date.now(),target=dateTime.toDate?dateTime.toDate().getTime():new Date(dateTime).getTime(),diff=target-now; if(diff<=0)return{expired:true,text:'Süresi doldu'}; return{expired:false,days:Math.floor(diff/86400000),hours:Math.floor((diff%86400000)/3600000),minutes:Math.floor((diff%3600000)/60000),seconds:Math.floor((diff%60000)/1000),diff}; }
+  function formatCountdown(rem){ if(rem.expired)return'Süresi doldu'; if(rem.days>0)return`${rem.days}g ${rem.hours}s ${rem.minutes}dk`; if(rem.hours>0)return`${rem.hours}:${String(rem.minutes).padStart(2,'0')}:${String(rem.seconds).padStart(2,'0')}`; return`${rem.minutes}:${String(rem.seconds).padStart(2,'0')}`; }
+  function renderCalendarEvents(){ const list=$('calendar-events-list'); if(!calendarEvents.length){ list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div>'; stopCalendarCountdown(); return; } list.innerHTML=calendarEvents.map(ev=>{ const dt=ev.dateTime&&ev.dateTime.toDate?ev.dateTime.toDate():new Date(ev.dateTime); const rem=getTimeRemaining(dt); const formattedDate=dt.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); let cls=''; if(rem.expired)cls='overdue'; else if(rem.diff<3600000)cls='urgent'; return`<div class="calendar-event-item ${rem.expired?'overdue':''}"><div class="calendar-event-info"><div class="calendar-event-title">${ev.title||'Etkinlik'}</div><div class="calendar-event-date">${formattedDate}</div>${ev.note?`<div class="calendar-event-note">${ev.note}</div>`:''}</div><div class="calendar-event-countdown ${cls}" data-datetime="${dt.toISOString()}">${formatCountdown(rem)}</div><button class="btn btn-sm btn-secondary btn-icon" onclick="deleteCalendarEvent('${ev.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>`; }).join(''); startCalendarCountdown(); }
+  function updateCalendarCountdowns(){ document.querySelectorAll('.calendar-event-item .calendar-event-countdown').forEach(el=>{ const rem=getTimeRemaining(new Date(el.dataset.datetime)); el.textContent=formatCountdown(rem); el.className='calendar-event-countdown'; if(rem.expired){el.classList.add('overdue');el.closest('.calendar-event-item').classList.add('overdue');} else if(rem.diff<3600000)el.classList.add('urgent'); }); }
+  function startCalendarCountdown(){ stopCalendarCountdown(); calendarInterval=setInterval(updateCalendarCountdowns,1000); }
+  function stopCalendarCountdown(){ if(calendarInterval){clearInterval(calendarInterval);calendarInterval=null;} }
+  async function addCalendarEvent(){ const title=$('cal-title').value.trim(),dtStr=$('cal-datetime').value,note=$('cal-note').value.trim(); if(!title||!dtStr){toast('Ad ve tarih giriniz.','error');return;} try{ await db.collection('users').doc(currentUser.uid).collection('calendarEvents').add({title,dateTime:firebase.firestore.Timestamp.fromDate(new Date(dtStr)),note,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); $('cal-title').value='';$('cal-datetime').value='';$('cal-note').value=''; toast('Eklendi!','success'); }catch(err){toast('Hata!','error');} }
+  async function deleteCalendarEvent(id){ try{ await db.collection('users').doc(currentUser.uid).collection('calendarEvents').doc(id).delete(); }catch(err){toast('Silinemedi.','error');} }
 
-  // ══════════ ACTIVITIES ══════════
-  function listenActivities() { db.collection('users').doc(currentUser.uid).collection('activities').orderBy('createdAt', 'desc').onSnapshot(snap => { activities = snap.docs.map(d => ({ id: d.id, ...d.data() })); activities.forEach(a => { if (a.startTimestamp && !runningTimers[a.id]) _attachLocalInterval(a.id, a.startTimestamp); }); renderActivities(); }); }
-  function _attachLocalInterval(id, startTimestamp) { if (runningTimers[id]) return; runningTimers[id] = { startTimestamp, get elapsed() { return Math.floor((Date.now() - this.startTimestamp) / 1000); }, interval: setInterval(() => { const el = $(`timer-${id}`); if (el) { const sec = Math.floor((Date.now() - startTimestamp) / 1000); el.textContent = formatTimer(sec); const act = activities.find(a => a.id === id); if (act) { const pb = document.querySelector(`#act-item-${id} .progress-bar`); if (pb) pb.style.width = Math.min(100, Math.round(sec / 60 / act.estimated * 100)) + '%'; } } }, 1000) }; }
-  async function addActivity() { const name = $('act-name').value.trim(); const estimated = parseInt($('act-estimated').value); const category = $('act-category').value; if (!name) { toast('Ad giriniz.', 'error'); return; } try { await db.collection('users').doc(currentUser.uid).collection('activities').add({ name, estimated, category, elapsed: 0, startTimestamp: null, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); $('act-name').value = ''; $('act-estimated').value = ''; toast('Eklendi!', 'success'); } catch (err) { toast('Hata!', 'error'); } }
-  async function deleteActivity(id) { try { if (runningTimers[id]) await stopTimer(id, false); await db.collection('users').doc(currentUser.uid).collection('activities').doc(id).delete(); } catch (err) { toast('Hata!', 'error'); } }
-  async function _saveActivityState(id, elapsed, startTimestamp) { await db.collection('users').doc(currentUser.uid).collection('activities').doc(id).update({ elapsed, startTimestamp }); }
-  function renderActivities() { const list = $('activity-list'); if (!activities.length) { list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div>'; return; } list.innerHTML = activities.map(act => { const meta = CATEGORY_META[act.category] || CATEGORY_META.other; const isRun = !!runningTimers[act.id]; const timerSec = isRun ? Math.floor((Date.now() - runningTimers[act.id].startTimestamp) / 1000) : (act.elapsed || 0); const kalan = Math.max(0, (act.estimated || 0) - Math.floor(timerSec / 60)); const pct = Math.min(100, Math.round(timerSec / 60 / (act.estimated || 1) * 100)); return `<div class="activity-item ${isRun ? 'running' : ''}" id="act-item-${act.id}"><div class="activity-dot" style="background:${meta.color}"></div><div class="activity-info"><div class="activity-name">${act.name}</div><div class="activity-meta">${meta.label} · ${act.estimated}dk · Kalan: ${kalan}dk</div><div class="progress-wrap mt-2" style="height:4px"><div class="progress-bar" style="width:${pct}%;background:${meta.color}"></div></div></div><div class="activity-timer ${isRun ? 'running' : ''}" id="timer-${act.id}">${formatTimer(timerSec)}</div><div class="activity-actions"><button class="btn btn-sm ${isRun ? 'btn-danger' : 'btn-success'}" onclick="toggleTimer('${act.id}')">${isRun ? 'Durdur' : 'Başla'}</button><button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')">↺</button><button class="btn btn-sm btn-secondary btn-icon" onclick="deleteActivity('${act.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div></div>`; }).join(''); }
-  function toggleTimer(id) { if (runningTimers[id]) stopTimer(id, true); else startTimer(id); }
-  async function startTimer(id) { for (const tid of Object.keys(runningTimers).filter(t => t !== id)) await stopTimer(tid, true); const act = activities.find(a => a.id === id); if (!act) return; const prev = act.elapsed || 0; const st = Date.now() - prev * 1000; await _saveActivityState(id, prev, st); _attachLocalInterval(id, st); renderActivities(); updateActiveTimerCard(); toast('Başlatıldı ▶', 'success'); }
-  async function stopTimer(id, save = true) { if (!runningTimers[id]) return; clearInterval(runningTimers[id].interval); const st = runningTimers[id].startTimestamp; const elapsed = Math.floor((Date.now() - st) / 1000); delete runningTimers[id]; await _saveActivityState(id, elapsed, null); if (save && elapsed > 0) { const min = Math.floor(elapsed / 60); if (min > 0) { const act = activities.find(a => a.id === id); await addSession(min, act ? act.name : '', id); toast(`${min} dk kaydedildi! ✓`, 'success'); } } renderActivities(); updateActiveTimerCard(); }
-  async function resetTimer(id) { if (runningTimers[id]) { clearInterval(runningTimers[id].interval); delete runningTimers[id]; } await _saveActivityState(id, 0, null); renderActivities(); updateActiveTimerCard(); toast('Sıfırlandı.', 'info'); }
+  // Stats, Leaderboard (öncekiyle aynı)
+  async function renderStats(){ const uid=currentUser.uid,now=new Date(); const[w,m,y]=await Promise.all([db.collection('sessions').where('userId','==',uid).where('weekKey','==',weekKey(now)).get(),db.collection('sessions').where('userId','==',uid).where('monthKey','==',monthKey(now)).get(),db.collection('sessions').where('userId','==',uid).where('yearKey','==',yearKey(now)).get()]); const sum=s=>s.docs.reduce((a,d)=>a+(d.data().minutes||0),0); $('stat-week').textContent=sum(w);$('stat-month').textContent=sum(m);$('stat-year').textContent=sum(y); const last7=[],labels7=[];for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);labels7.push(d.toLocaleDateString('tr-TR',{weekday:'short'}));const dk=dateKey(d);last7.push(w.docs.filter(d=>d.data().dateKey===dk).reduce((a,d)=>a+(d.data().minutes||0),0));} const last6m=[],labels6m=[];const mSessions=y.docs.map(d=>d.data());for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);labels6m.push(d.toLocaleDateString('tr-TR',{month:'short'}));const mk=monthKey(d);last6m.push(mSessions.filter(s=>s.monthKey===mk).reduce((a,d)=>a+(d.minutes||0),0));} if(weeklyChart)weeklyChart.destroy();weeklyChart=new Chart($('chart-weekly'),{type:'bar',data:{labels:labels7,datasets:[{label:'Dakika',data:last7,backgroundColor:labels7.map((_,i)=>i===6?'#6c63ff':'rgba(108,99,255,.35)'),borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}},y:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}}}}}); if(monthlyChart)monthlyChart.destroy();monthlyChart=new Chart($('chart-monthly'),{type:'line',data:{labels:labels6m,datasets:[{label:'Dakika',data:last6m,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.15)',tension:.4,fill:true,pointBackgroundColor:'#a78bfa'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}},y:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}}}}}); }
+  async function loadLeaderboard(period){ lbPeriod=period; const list=$('leaderboard-list'); list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Yükleniyor…</div>'; const snap=await db.collection('leaderboard').orderBy(period,'desc').limit(20).get(); const rows=snap.docs.map(d=>({id:d.id,...d.data()})); if(!rows.length){list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz kayıt yok.</div>';return;} list.innerHTML=rows.map((row,i)=>{const r=i+1,rc=r===1?'gold':r===2?'silver':r===3?'bronze':'',rl=r===1?'🥇':r===2?'🥈':r===3?'🥉':r,isMe=row.userId===currentUser.uid,fmt=formatMinLong(row[period]||0);return`<div class="lb-row ${isMe?'me':''}"><div class="lb-rank ${rc}">${rl}</div><div class="lb-name">${row.userName||'Anonim'}${isMe?' <span class="badge badge-purple" style="font-size:.65rem">Sen</span>':''}</div><div class="lb-time"><span style="font-size:1rem">${fmt.main}</span> <span style="font-size:.7rem;color:var(--text3)">${fmt.sub}</span></div></div>`;}).join('');}
 
-  // ══════════ CALENDAR ══════════
-  function listenCalendarEvents() { db.collection('users').doc(currentUser.uid).collection('calendarEvents').orderBy('dateTime', 'asc').onSnapshot(snap => { calendarEvents = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderCalendarEvents(); }); }
-  function getTimeRemaining(dateTime) { const now = Date.now(), target = dateTime.toDate ? dateTime.toDate().getTime() : new Date(dateTime).getTime(), diff = target - now; if (diff <= 0) return { expired: true, text: 'Süresi doldu' }; return { expired: false, days: Math.floor(diff / 86400000), hours: Math.floor((diff % 86400000) / 3600000), minutes: Math.floor((diff % 3600000) / 60000), seconds: Math.floor((diff % 60000) / 1000), diff }; }
-  function formatCountdown(rem) { if (rem.expired) return 'Süresi doldu'; if (rem.days > 0) return `${rem.days}g ${rem.hours}s ${rem.minutes}dk`; if (rem.hours > 0) return `${rem.hours}:${String(rem.minutes).padStart(2,'0')}:${String(rem.seconds).padStart(2,'0')}`; return `${rem.minutes}:${String(rem.seconds).padStart(2,'0')}`; }
-  function renderCalendarEvents() { const list = $('calendar-events-list'); if (!calendarEvents.length) { list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div>'; stopCalendarCountdown(); return; } list.innerHTML = calendarEvents.map(ev => { const dt = ev.dateTime && ev.dateTime.toDate ? ev.dateTime.toDate() : new Date(ev.dateTime); const rem = getTimeRemaining(dt); const formattedDate = dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); let cls = ''; if (rem.expired) cls = 'overdue'; else if (rem.diff < 3600000) cls = 'urgent'; return `<div class="calendar-event-item ${rem.expired ? 'overdue' : ''}"><div class="calendar-event-info"><div class="calendar-event-title">${ev.title || 'Etkinlik'}</div><div class="calendar-event-date">${formattedDate}</div>${ev.note ? `<div class="calendar-event-note">${ev.note}</div>` : ''}</div><div class="calendar-event-countdown ${cls}" data-datetime="${dt.toISOString()}">${formatCountdown(rem)}</div><button class="btn btn-sm btn-secondary btn-icon" onclick="deleteCalendarEvent('${ev.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>`; }).join(''); startCalendarCountdown(); }
-  function updateCalendarCountdowns() { document.querySelectorAll('.calendar-event-item .calendar-event-countdown').forEach(el => { const rem = getTimeRemaining(new Date(el.dataset.datetime)); el.textContent = formatCountdown(rem); el.className = 'calendar-event-countdown'; if (rem.expired) { el.classList.add('overdue'); el.closest('.calendar-event-item').classList.add('overdue'); } else if (rem.diff < 3600000) el.classList.add('urgent'); }); }
-  function startCalendarCountdown() { stopCalendarCountdown(); calendarInterval = setInterval(updateCalendarCountdowns, 1000); }
-  function stopCalendarCountdown() { if (calendarInterval) { clearInterval(calendarInterval); calendarInterval = null; } }
-  async function addCalendarEvent() { const title = $('cal-title').value.trim(), dtStr = $('cal-datetime').value, note = $('cal-note').value.trim(); if (!title || !dtStr) { toast('Ad ve tarih giriniz.', 'error'); return; } try { await db.collection('users').doc(currentUser.uid).collection('calendarEvents').add({ title, dateTime: firebase.firestore.Timestamp.fromDate(new Date(dtStr)), note, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); $('cal-title').value = ''; $('cal-datetime').value = ''; $('cal-note').value = ''; toast('Eklendi!', 'success'); } catch (err) { toast('Hata!', 'error'); } }
-  async function deleteCalendarEvent(id) { try { await db.collection('users').doc(currentUser.uid).collection('calendarEvents').doc(id).delete(); } catch (err) { toast('Silinemedi.', 'error'); } }
+  // UI & Navigation
+  function renderUI(){ updateGoalDisplay(); updateActiveTimerCard(); }
+  let _activeCardInterval=null;
+  function updateActiveTimerCard(){ const card=$('active-timer-card'); const runningId=Object.keys(runningTimers)[0]; if(!runningId){card.classList.add('hidden');clearInterval(_activeCardInterval);_activeCardInterval=null;return;} const act=activities.find(a=>a.id===runningId); card.classList.remove('hidden');$('active-timer-name').textContent=act?act.name:'Etkinlik';$('active-timer-stop-btn').onclick=()=>stopTimer(runningId,true); const update=()=>{if(!runningTimers[runningId]){card.classList.add('hidden');clearInterval(_activeCardInterval);return;}$('active-timer-elapsed').textContent=formatTimer(Math.floor((Date.now()-runningTimers[runningId].startTimestamp)/1000));}; update(); clearInterval(_activeCardInterval); _activeCardInterval=setInterval(update,1000); }
+  document.querySelectorAll('.nav-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.querySelectorAll('[id^="tab-"]').forEach(t=>t.classList.add('hidden'));$(`tab-${tab}`).classList.remove('hidden');if(tab==='calendar')startCalendarCountdown();else stopCalendarCountdown();if(tab==='stats')renderStats();if(tab==='leaderboard'){loadLeaderboard(lbPeriod);if(!lbRefreshTimer)lbRefreshTimer=setInterval(()=>loadLeaderboard(lbPeriod),60000);}else{clearInterval(lbRefreshTimer);lbRefreshTimer=null;}}));
+  document.querySelectorAll('.lb-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.lb-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadLeaderboard(btn.dataset.period);}));
 
-  // ══════════ STATS ══════════
-  async function renderStats() { const uid = currentUser.uid, now = new Date(); const [w, m, y] = await Promise.all([db.collection('sessions').where('userId','==',uid).where('weekKey','==',weekKey(now)).get(), db.collection('sessions').where('userId','==',uid).where('monthKey','==',monthKey(now)).get(), db.collection('sessions').where('userId','==',uid).where('yearKey','==',yearKey(now)).get()]); const sum = s => s.docs.reduce((a,d)=>a+(d.data().minutes||0),0); $('stat-week').textContent=sum(w); $('stat-month').textContent=sum(m); $('stat-year').textContent=sum(y); const last7=[],labels7=[]; for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);labels7.push(d.toLocaleDateString('tr-TR',{weekday:'short'}));const dk=dateKey(d);last7.push(w.docs.filter(d=>d.data().dateKey===dk).reduce((a,d)=>a+(d.data().minutes||0),0));} const last6m=[],labels6m=[];const mSessions=y.docs.map(d=>d.data());for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);labels6m.push(d.toLocaleDateString('tr-TR',{month:'short'}));const mk=monthKey(d);last6m.push(mSessions.filter(s=>s.monthKey===mk).reduce((a,d)=>a+(d.minutes||0),0));} if(weeklyChart)weeklyChart.destroy();weeklyChart=new Chart($('chart-weekly'),{type:'bar',data:{labels:labels7,datasets:[{label:'Dakika',data:last7,backgroundColor:labels7.map((_,i)=>i===6?'#6c63ff':'rgba(108,99,255,.35)'),borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}},y:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}}}}}); if(monthlyChart)monthlyChart.destroy();monthlyChart=new Chart($('chart-monthly'),{type:'line',data:{labels:labels6m,datasets:[{label:'Dakika',data:last6m,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.15)',tension:.4,fill:true,pointBackgroundColor:'#a78bfa'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}},y:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}}}}}); }
+  // Modals
+  $('user-badge-btn').addEventListener('click',()=>{
+    $('new-username-input').value=userProfile.displayName||'';
+    // Emoji seçiciyi doldur
+    const picker=$('emoji-picker'); picker.innerHTML='';
+    AVATAR_OPTIONS.forEach(emoji=>{
+      const btn=document.createElement('button');
+      btn.textContent=emoji; btn.style.cssText='font-size:1.6rem;background:none;border:2px solid var(--border);border-radius:12px;padding:4px;cursor:pointer;transition:.2s;';
+      if(emoji===userProfile.avatar) btn.style.borderColor='var(--accent)';
+      btn.addEventListener('click',(e)=>{
+        e.preventDefault();
+        picker.querySelectorAll('button').forEach(b=>b.style.borderColor='var(--border)');
+        btn.style.borderColor='var(--accent)';
+        btn.dataset.selected='true';
+      });
+      btn.addEventListener('dblclick',(e)=>{
+        e.preventDefault();
+        $('modal-username-save').click();
+      });
+      picker.appendChild(btn);
+    });
+    $('modal-username').classList.remove('hidden');
+  });
+  $('modal-username-cancel').addEventListener('click',()=>$('modal-username').classList.add('hidden'));
+  $('modal-username-save').addEventListener('click',async()=>{
+    const name=$('new-username-input').value.trim();
+    if(!name){toast('İsim giriniz.','error');return;}
+    const selectedBtn=document.querySelector('#emoji-picker button[data-selected="true"]');
+    const avatar=selectedBtn?selectedBtn.textContent:userProfile.avatar;
+    try{
+      await saveUserProfile({displayName:name,avatar});
+      $('modal-username').classList.add('hidden');
+      toast('Profil güncellendi.','success');
+    }catch(err){toast('Güncellenemedi.','error');}
+  });
+  $('edit-goal-btn').addEventListener('click',()=>{$('new-goal-input').value=userProfile.dailyGoal||120;$('modal-goal').classList.remove('hidden');});
+  $('modal-goal-cancel').addEventListener('click',()=>$('modal-goal').classList.add('hidden'));
+  $('modal-goal-save').addEventListener('click',async()=>{const goal=parseInt($('new-goal-input').value);if(!goal||goal<10){toast('En az 10 dk.','error');return;}await saveUserProfile({dailyGoal:goal});$('modal-goal').classList.add('hidden');updateGoalDisplay();toast('Hedef güncellendi!','success');});
 
-  // ══════════ LEADERBOARD ══════════
-  async function loadLeaderboard(period) { lbPeriod = period; const list = $('leaderboard-list'); list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Yükleniyor…</div>'; const snap = await db.collection('leaderboard').orderBy(period,'desc').limit(20).get(); const rows = snap.docs.map(d=>({id:d.id,...d.data()})); if(!rows.length){list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz kayıt yok.</div>';return;} list.innerHTML = rows.map((row,i)=>{const r=i+1,rc=r===1?'gold':r===2?'silver':r===3?'bronze':'',rl=r===1?'🥇':r===2?'🥈':r===3?'🥉':r,isMe=row.userId===currentUser.uid,fmt=formatMinLong(row[period]||0);return`<div class="lb-row ${isMe?'me':''}"><div class="lb-rank ${rc}">${rl}</div><div class="lb-name">${row.userName||'Anonim'}${isMe?' <span class="badge badge-purple" style="font-size:.65rem">Sen</span>':''}</div><div class="lb-time"><span style="font-size:1rem">${fmt.main}</span> <span style="font-size:.7rem;color:var(--text3)">${fmt.sub}</span></div></div>`;}).join('');}
+  // Manual & Quick Pomodoro
+  $('manual-add-btn').addEventListener('click',async()=>{const min=parseInt($('manual-minutes').value),note=$('manual-note').value.trim();if(!min||min<1){toast('Süre giriniz.','error');return;}await addSession(min,note);$('manual-minutes').value='';$('manual-note').value='';toast(`${min} dk kaydedildi!`,'success');});
+  $('add-activity-btn').addEventListener('click',addActivity);
+  $('add-calendar-btn').addEventListener('click',addCalendarEvent);
+  async function startQuickPomodoro(){ const name=$('quick-pomodoro-name').value.trim(); const minutes=parseInt($('quick-pomodoro-minutes').value); if(!name){toast('Etkinlik adı giriniz.','error');return;} if(!minutes||minutes<1){toast('Süre giriniz.','error');return;} try{ const docRef=await db.collection('users').doc(currentUser.uid).collection('activities').add({name,estimated:minutes,category:'other',elapsed:0,startTimestamp:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); toast('Başlatılıyor...','success'); startTimer(docRef.id); $('quick-pomodoro-name').value='';$('quick-pomodoro-minutes').value='25'; }catch(err){toast('Başlatılamadı.','error');} }
+  $('start-quick-pomodoro-btn').addEventListener('click',startQuickPomodoro);
 
-  // ══════════ UI & NAV ══════════
-  function renderUI() { updateGoalDisplay(); updateActiveTimerCard(); }
-  let _activeCardInterval = null;
-  function updateActiveTimerCard() { const card = $('active-timer-card'); const runningId = Object.keys(runningTimers)[0]; if (!runningId) { card.classList.add('hidden'); clearInterval(_activeCardInterval); _activeCardInterval = null; return; } const act = activities.find(a => a.id === runningId); card.classList.remove('hidden'); $('active-timer-name').textContent = act ? act.name : 'Etkinlik'; $('active-timer-stop-btn').onclick = () => stopTimer(runningId, true); const update = () => { if (!runningTimers[runningId]) { card.classList.add('hidden'); clearInterval(_activeCardInterval); return; } $('active-timer-elapsed').textContent = formatTimer(Math.floor((Date.now() - runningTimers[runningId].startTimestamp) / 1000)); }; update(); clearInterval(_activeCardInterval); _activeCardInterval = setInterval(update, 1000); }
-
-  document.querySelectorAll('.nav-tab').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); const tab = btn.dataset.tab; document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden')); $(`tab-${tab}`).classList.remove('hidden'); if (tab === 'calendar') startCalendarCountdown(); else stopCalendarCountdown(); if (tab === 'stats') renderStats(); if (tab === 'leaderboard') { loadLeaderboard(lbPeriod); if (!lbRefreshTimer) lbRefreshTimer = setInterval(() => loadLeaderboard(lbPeriod), 60000); } else { clearInterval(lbRefreshTimer); lbRefreshTimer = null; } }));
-  document.querySelectorAll('.lb-tab').forEach(btn => btn.addEventListener('click', () => { document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); loadLeaderboard(btn.dataset.period); }));
-
-  // ══════════ MODALS ══════════
-  $('user-badge-btn').addEventListener('click', () => { $('new-username-input').value = userProfile.displayName || ''; $('modal-username').classList.remove('hidden'); });
-  $('modal-username-cancel').addEventListener('click', () => $('modal-username').classList.add('hidden'));
-  $('modal-username-save').addEventListener('click', async () => { const name = $('new-username-input').value.trim(); if (!name) { toast('İsim giriniz.', 'error'); return; } try { await saveUserProfile({ displayName: name }); $('modal-username').classList.add('hidden'); toast('Profil güncellendi.', 'success'); } catch (err) { toast('Güncellenemedi.', 'error'); } });
-  $('edit-goal-btn').addEventListener('click', () => { $('new-goal-input').value = userProfile.dailyGoal || 120; $('modal-goal').classList.remove('hidden'); });
-  $('modal-goal-cancel').addEventListener('click', () => $('modal-goal').classList.add('hidden'));
-  $('modal-goal-save').addEventListener('click', async () => { const goal = parseInt($('new-goal-input').value); if (!goal || goal < 10) { toast('En az 10 dk.', 'error'); return; } await saveUserProfile({ dailyGoal: goal }); $('modal-goal').classList.add('hidden'); updateGoalDisplay(); toast('Hedef güncellendi!', 'success'); });
-
-  // ══════════ MANUEL & HIZLI POMODORO ══════════
-  $('manual-add-btn').addEventListener('click', async () => { const min = parseInt($('manual-minutes').value), note = $('manual-note').value.trim(); if (!min || min < 1) { toast('Süre giriniz.', 'error'); return; } await addSession(min, note); $('manual-minutes').value = ''; $('manual-note').value = ''; toast(`${min} dk kaydedildi!`, 'success'); });
-  $('add-activity-btn').addEventListener('click', addActivity);
-  $('add-calendar-btn').addEventListener('click', addCalendarEvent);
-
-  async function startQuickPomodoro() {
-    const name = $('quick-pomodoro-name').value.trim();
-    const minutes = parseInt($('quick-pomodoro-minutes').value);
-    if (!name) { toast('Etkinlik adı giriniz.', 'error'); return; }
-    if (!minutes || minutes < 1) { toast('Süre giriniz.', 'error'); return; }
-    try {
-      const docRef = await db.collection('users').doc(currentUser.uid)
-        .collection('activities').add({ name, estimated: minutes, category: 'other', elapsed: 0, startTimestamp: null, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      toast('Başlatılıyor...', 'success');
-      startTimer(docRef.id);
-      $('quick-pomodoro-name').value = ''; $('quick-pomodoro-minutes').value = '25';
-    } catch (err) { toast('Başlatılamadı.', 'error'); }
-  }
-  $('start-quick-pomodoro-btn').addEventListener('click', startQuickPomodoro);
-
-  ['modal-username', 'modal-goal'].forEach(id => $(id).addEventListener('click', e => { if (e.target === $(id)) $(id).classList.add('hidden'); }));
+  ['modal-username','modal-goal'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).classList.add('hidden');}));
 </script>
 </body>
 </html>
