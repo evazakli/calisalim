@@ -616,11 +616,9 @@ body {
   --c-other: #9ca3af;
 }
 
-/* canvas SVG masa */
-#desk-svg {
-  width: 100%;
-  height: auto;
-  display: block;
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: .6; }
 }
 </style>
 </head>
@@ -673,6 +671,29 @@ body {
 
     <!-- ═══════════ TAB: ANA SAYFA ═══════════ -->
     <div id="tab-home">
+      <!-- Aktif Zamanlayıcı (varsa göster) -->
+      <div id="active-timer-card" class="card hidden" style="border-color:var(--accent3);background:rgba(52,211,153,.06)">
+        <div class="flex items-center gap-3">
+          <div style="position:relative;width:48px;height:48px;flex-shrink:0">
+            <svg viewBox="0 0 48 48" style="width:48px;height:48px;transform:rotate(-90deg)">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" stroke-width="4"/>
+              <circle id="active-timer-ring" cx="24" cy="24" r="20" fill="none" stroke="#34d399" stroke-width="4"
+                stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round"
+                style="transition:stroke-dashoffset .5s ease"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+              <div style="width:8px;height:8px;border-radius:50%;background:#34d399;animation:pulse 1.5s infinite"></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.75rem;font-weight:600;color:var(--accent3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Şu An Çalışıyor</div>
+            <div id="active-timer-name" style="font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+            <div id="active-timer-elapsed" style="font-family:var(--font-display);font-size:1.4rem;font-weight:800;color:var(--accent3);line-height:1.2">00:00</div>
+          </div>
+          <button class="btn btn-danger btn-sm" id="active-timer-stop-btn">⏸ Durdur</button>
+        </div>
+      </div>
+
       <!-- Günlük Hedef -->
       <div class="card">
         <div class="card-title">
@@ -917,9 +938,18 @@ function toast(msg, type = 'info') {
 }
 
 function formatMin(min) {
+  if (!min || min < 1) return '0 dk';
   if (min < 60) return min + ' dk';
   const h = Math.floor(min / 60), m = min % 60;
   return h + 's ' + (m > 0 ? m + 'dk' : '');
+}
+
+// Leaderboard için: büyük sayı formatı (saat önde)
+function formatMinLong(min) {
+  if (!min || min < 1) return { main: '0', sub: 'dk' };
+  if (min < 60) return { main: String(min), sub: 'dk' };
+  const h = Math.floor(min / 60), m = min % 60;
+  return { main: String(h), sub: 'sa' + (m > 0 ? ' ' + m + 'dk' : '') };
 }
 
 function formatTimer(sec) {
@@ -1019,33 +1049,70 @@ async function saveUserProfile(updates) {
 
 /* ════════════════════════════════════════════
    PRESENCE — REALTIME DATABASE
+   Ekran kapalıyken onDisconnect() tetiklenmez,
+   bu nedenle 30 saniyelik heartbeat kullanıyoruz.
 ════════════════════════════════════════════ */
-function setupPresence() {
-  const uid      = currentUser.uid;
-  const presRef  = rtdb.ref(`presence/${uid}`);
-  const connRef  = rtdb.ref('.info/connected');
+let presenceHeartbeat = null;
 
+function setupPresence() {
+  const uid     = currentUser.uid;
+  const presRef = rtdb.ref(`presence/${uid}`);
+  const connRef = rtdb.ref('.info/connected');
+
+  const presenceData = () => ({
+    uid,
+    name: userProfile.displayName,
+    online: true,
+    since: Date.now(),
+    lastSeen: Date.now()
+  });
+
+  // Firebase bağlantısı kurulduğunda presence yaz
   connRef.on('value', snap => {
     if (!snap.val()) return;
-    // Bağlantı kesilince sil
     presRef.onDisconnect().remove();
-    // Varlığı yaz
-    presRef.set({
-      uid,
-      name: userProfile.displayName,
-      online: true,
-      since: Date.now()
+    presRef.set(presenceData()).catch(err => {
+      console.warn('Presence yazılamadı:', err.message);
+      // databaseURL yanlış veya kural hatası — sadece UI'da uyar
+      const badge = $('online-count-badge');
+      if (badge) badge.textContent = 'RTDB hatası';
     });
   });
 
-  // Tüm presence'ı dinle
+  // 30 sn'de bir lastSeen güncelle (sekme arka planda olsa bile çalışır)
+  clearInterval(presenceHeartbeat);
+  presenceHeartbeat = setInterval(() => {
+    presRef.update({ lastSeen: Date.now() }).catch(() => {});
+  }, 30000);
+
+  // Sayfa kapanırken temizle
+  window.addEventListener('beforeunload', () => {
+    presRef.remove();
+    clearInterval(presenceHeartbeat);
+  });
+
+  // Tüm presence'ı dinle — 60 sn'den eski kayıtları filtrele (hayalet kullanıcı önlemi)
   rtdb.ref('presence').on('value', snap => {
     const users = [];
+    const now   = Date.now();
     snap.forEach(child => {
-      users.push(child.val());
+      const val = child.val();
+      if (val && val.lastSeen && (now - val.lastSeen) < 90000) {
+        users.push(val);
+      } else if (val && !val.lastSeen) {
+        // Eski format (lastSeen yok) — since'e bak
+        if (val.since && (now - val.since) < 90000) users.push(val);
+      }
     });
     renderPresence(users);
-    $('online-count-badge').textContent = users.length + ' kişi';
+    const badge = $('online-count-badge');
+    if (badge) badge.textContent = users.length + ' kişi';
+  }, err => {
+    console.error('Presence dinleme hatası:', err);
+    const badge = $('online-count-badge');
+    if (badge) badge.textContent = 'Bağlanamadı';
+    // Presence olmadan devam et
+    renderPresence([{ uid: currentUser.uid, name: userProfile.displayName, since: Date.now(), lastSeen: Date.now() }]);
   });
 }
 
@@ -1201,6 +1268,14 @@ function updateGoalDisplay() {
 
 /* ════════════════════════════════════════════
    ETKİNLİKLER
+   
+   Zamanlayıcı tasarımı:
+   - Firestore'da her etkinlikte `startTimestamp` (ms) ve `elapsed` (sn) tutulur.
+   - Başlatıldığında: startTimestamp = Date.now() - elapsed*1000 → Firestore'a yaz.
+   - Görüntüleme: currentElapsed = floor((Date.now() - startTimestamp) / 1000)
+   - Bu sayede sekme kapalıyken de süre doğru hesaplanır (sunucu zamanı değil
+     client zamanı kullanılır; yeterince hassas ve ücretsiz).
+   - Durdurulduğunda: elapsed = currentElapsed, startTimestamp = null → Firestore'a yaz.
 ════════════════════════════════════════════ */
 function listenActivities() {
   db.collection('users').doc(currentUser.uid)
@@ -1208,8 +1283,44 @@ function listenActivities() {
     .orderBy('createdAt', 'desc')
     .onSnapshot(snap => {
       activities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Firestore'da hâlâ "çalışıyor" işaretli etkinlikleri local state ile senkronize et
+      activities.forEach(act => {
+        if (act.startTimestamp && !runningTimers[act.id]) {
+          // Farklı bir cihaz/sekme başlatmış olabilir — local interval kur
+          _attachLocalInterval(act.id, act.startTimestamp);
+        }
+      });
       renderActivities();
     });
+}
+
+// Sadece UI sayacı için local interval — kayıt mantığı ayrı
+function _attachLocalInterval(id, startTimestamp) {
+  if (runningTimers[id]) return; // Zaten var
+  runningTimers[id] = {
+    startTimestamp,
+    get elapsed() { return Math.floor((Date.now() - this.startTimestamp) / 1000); },
+    interval: setInterval(() => {
+      const el = $(`timer-${id}`);
+      if (el) {
+        const sec = Math.floor((Date.now() - startTimestamp) / 1000);
+        el.textContent = formatTimer(sec);
+        // Progress bar güncelle
+        const act = activities.find(a => a.id === id);
+        if (act) {
+          const pb = document.querySelector(`#act-item-${id} .progress-bar`);
+          if (pb) pb.style.width = Math.min(100, Math.round(sec/60/act.estimated*100)) + '%';
+          // Kalan dk güncelle
+          const meta2 = document.querySelector(`#act-item-${id} .activity-meta`);
+          if (meta2) {
+            const meta = CATEGORY_META[act.category] || CATEGORY_META.other;
+            const kalan = Math.max(0, act.estimated - Math.floor(sec / 60));
+            meta2.textContent = `${meta.label} · Tahmini: ${act.estimated}dk · Kalan: ${kalan}dk`;
+          }
+        }
+      }
+    }, 1000)
+  };
 }
 
 async function addActivity() {
@@ -1224,6 +1335,7 @@ async function addActivity() {
     .collection('activities').add({
       name, estimated, category,
       elapsed: 0,
+      startTimestamp: null, // null = durdu
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -1233,14 +1345,15 @@ async function addActivity() {
 }
 
 async function deleteActivity(id) {
-  if (runningTimers[id]) stopTimer(id, false);
+  if (runningTimers[id]) await stopTimer(id, false);
   await db.collection('users').doc(currentUser.uid)
     .collection('activities').doc(id).delete();
 }
 
-async function updateActivityElapsed(id, elapsed) {
+// elapsed = saniye cinsinden toplam geçen süre
+async function _saveActivityState(id, elapsed, startTimestamp) {
   await db.collection('users').doc(currentUser.uid)
-    .collection('activities').doc(id).update({ elapsed });
+    .collection('activities').doc(id).update({ elapsed, startTimestamp });
 }
 
 function renderActivities() {
@@ -1252,10 +1365,13 @@ function renderActivities() {
 
   list.innerHTML = activities.map(act => {
     const meta    = CATEGORY_META[act.category] || CATEGORY_META.other;
-    const elapsed = (runningTimers[act.id]?.elapsed ?? act.elapsed) || 0;
-    const kalan   = Math.max(0, (act.estimated || 0) - Math.floor(elapsed / 60));
     const isRun   = !!runningTimers[act.id];
-    const timerSec = runningTimers[act.id] ? runningTimers[act.id].elapsed : (act.elapsed || 0);
+    // Gerçek geçen süre: çalışıyorsa Date.now() farkı, duruyorsa Firestore'daki elapsed
+    const timerSec = isRun
+      ? Math.floor((Date.now() - runningTimers[act.id].startTimestamp) / 1000)
+      : (act.elapsed || 0);
+    const kalan   = Math.max(0, (act.estimated || 0) - Math.floor(timerSec / 60));
+    const pct     = Math.min(100, Math.round(timerSec / 60 / (act.estimated || 1) * 100));
 
     return `<div class="activity-item ${isRun ? 'running' : ''}" id="act-item-${act.id}">
       <div class="activity-dot" style="background:${meta.color}"></div>
@@ -1265,15 +1381,15 @@ function renderActivities() {
           ${meta.label} · Tahmini: ${act.estimated}dk · Kalan: ${kalan}dk
         </div>
         <div class="progress-wrap mt-2" style="height:4px">
-          <div class="progress-bar" style="width:${Math.min(100, Math.round(elapsed/60/act.estimated*100))}%;background:${meta.color}"></div>
+          <div class="progress-bar" style="width:${pct}%;background:${meta.color}"></div>
         </div>
       </div>
       <div class="activity-timer ${isRun ? 'running' : ''}" id="timer-${act.id}">${formatTimer(timerSec)}</div>
       <div class="activity-actions">
         <button class="btn btn-sm ${isRun ? 'btn-danger' : 'btn-success'}" onclick="toggleTimer('${act.id}')">
-          ${isRun ? '⏸ Dur' : '▶ Başla'}
+          ${isRun ? '⏸ Durdur' : '▶ Başla'}
         </button>
-        <button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')">↺</button>
+        <button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')" title="Sıfırla">↺</button>
         <button class="btn btn-sm btn-secondary btn-icon" onclick="deleteActivity('${act.id}')" title="Sil">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
@@ -1290,53 +1406,62 @@ function toggleTimer(id) {
   }
 }
 
-function startTimer(id) {
+async function startTimer(id) {
   const act = activities.find(a => a.id === id);
   if (!act) return;
 
-  // Diğer zamanlayıcıları durdur
-  Object.keys(runningTimers).forEach(tid => { if (tid !== id) stopTimer(tid, true); });
+  // Önce diğer tüm çalışan zamanlayıcıları durdur (aynı anda tek timer)
+  const othersRunning = Object.keys(runningTimers).filter(tid => tid !== id);
+  for (const tid of othersRunning) {
+    await stopTimer(tid, true);
+  }
 
-  const startElapsed = act.elapsed || 0;
-  const startTime    = Date.now() - startElapsed * 1000;
+  // startTimestamp: daha önce elapsed kadar ileri başlat
+  const prevElapsed   = act.elapsed || 0; // saniye
+  const startTimestamp = Date.now() - prevElapsed * 1000;
 
-  runningTimers[id] = {
-    elapsed: startElapsed,
-    interval: setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      runningTimers[id].elapsed = elapsed;
-      const el = $(`timer-${id}`);
-      if (el) el.textContent = formatTimer(elapsed);
-    }, 1000)
-  };
+  // Firestore'a "çalışıyor" durumunu yaz
+  await _saveActivityState(id, prevElapsed, startTimestamp);
 
+  // Local interval başlat
+  _attachLocalInterval(id, startTimestamp);
   renderActivities();
+  updateActiveTimerCard();
   toast('Zamanlayıcı başlatıldı ▶', 'success');
 }
 
 async function stopTimer(id, save = true) {
   if (!runningTimers[id]) return;
   clearInterval(runningTimers[id].interval);
-  const elapsed = runningTimers[id].elapsed;
+  const startTimestamp = runningTimers[id].startTimestamp;
+  const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
   delete runningTimers[id];
 
+  // Firestore'a "durdu" durumunu yaz
+  await _saveActivityState(id, elapsed, null);
+
   if (save && elapsed > 0) {
-    await updateActivityElapsed(id, elapsed);
     const minutes = Math.floor(elapsed / 60);
     if (minutes > 0) {
       const act = activities.find(a => a.id === id);
       await addSession(minutes, act ? act.name : '', id);
-      toast(`${minutes} dakika kaydedildi!`, 'success');
+      toast(`${minutes} dakika kaydedildi! ✓`, 'success');
     }
   }
 
   renderActivities();
+  updateActiveTimerCard();
 }
 
 async function resetTimer(id) {
-  if (runningTimers[id]) stopTimer(id, false);
-  await updateActivityElapsed(id, 0);
+  if (runningTimers[id]) {
+    clearInterval(runningTimers[id].interval);
+    delete runningTimers[id];
+  }
+  await _saveActivityState(id, 0, null);
   toast('Zamanlayıcı sıfırlandı.', 'info');
+  renderActivities();
+  updateActiveTimerCard();
 }
 
 /* ════════════════════════════════════════════
@@ -1460,14 +1585,19 @@ async function loadLeaderboard(period) {
   }
 
   list.innerHTML = rows.map((row, i) => {
-    const rank = i + 1;
+    const rank      = i + 1;
     const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
     const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
     const isMe      = row.userId === currentUser.uid;
+    const mins      = row[period] || 0;
+    const fmt       = formatMinLong(mins);
     return `<div class="lb-row ${isMe ? 'me' : ''}">
       <div class="lb-rank ${rankClass}">${rankLabel}</div>
       <div class="lb-name">${row.userName || 'Anonim'} ${isMe ? '<span class="badge badge-purple" style="margin-left:6px;font-size:.65rem">Sen</span>' : ''}</div>
-      <div class="lb-time">${formatMin(row[period] || 0)}</div>
+      <div class="lb-time">
+        <span style="font-size:1.15rem">${fmt.main}</span>
+        <span style="font-size:.72rem;color:var(--text3);margin-left:2px">${fmt.sub}</span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1477,6 +1607,50 @@ async function loadLeaderboard(period) {
 ════════════════════════════════════════════ */
 function renderUI() {
   updateGoalDisplay();
+  updateActiveTimerCard();
+}
+
+// Ana sayfadaki aktif sayaç widget'ını güncelle
+let _activeCardInterval = null;
+function updateActiveTimerCard() {
+  const card = $('active-timer-card');
+  if (!card) return;
+
+  const runningId = Object.keys(runningTimers)[0];
+  if (!runningId) {
+    card.classList.add('hidden');
+    clearInterval(_activeCardInterval);
+    _activeCardInterval = null;
+    return;
+  }
+
+  const act = activities.find(a => a.id === runningId);
+  card.classList.remove('hidden');
+  $('active-timer-name').textContent = act ? act.name : 'Etkinlik';
+  $('active-timer-stop-btn').onclick = () => stopTimer(runningId, true);
+
+  const updateCard = () => {
+    if (!runningTimers[runningId]) {
+      card.classList.add('hidden');
+      clearInterval(_activeCardInterval);
+      _activeCardInterval = null;
+      return;
+    }
+    const sec = Math.floor((Date.now() - runningTimers[runningId].startTimestamp) / 1000);
+    $('active-timer-elapsed').textContent = formatTimer(sec);
+    // Halka ilerleme (maks 2 saat = 7200sn)
+    const ring = $('active-timer-ring');
+    if (ring && act) {
+      const maxSec = (act.estimated || 60) * 60;
+      const pct    = Math.min(1, sec / maxSec);
+      const circ   = 2 * Math.PI * 20; // 125.66
+      ring.style.strokeDashoffset = circ * (1 - pct);
+    }
+  };
+
+  updateCard();
+  clearInterval(_activeCardInterval);
+  _activeCardInterval = setInterval(updateCard, 1000);
 }
 
 // Sekme geçişi
