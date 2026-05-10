@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           GÜNLÜK ÇALIŞMA TAKİP UYGULAMASI — Firebase + Vanilla JS          ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  KURULUM TALİMATLARI                                                        ║
+║                                                                              ║
+║  1. Firebase Projesi Oluşturma                                              ║
+║     a) https://console.firebase.google.com adresine gidin                   ║
+║     b) "Add project" → proje adı girin → Analytics isteğe bağlı            ║
+║     c) Proje oluşturulduktan sonra "Project Settings" açın                  ║
+║                                                                              ║
+║  2. Firebase Servislerini Aktif Edin                                        ║
+║     a) Authentication → Get started → Anonymous'u etkinleştirin             ║
+║        (isteğe bağlı: Google provider da ekleyin)                           ║
+║     b) Firestore Database → Create database → "production mode"             ║
+║        → Bölge seçin (europe-west1 önerilir)                               ║
+║     c) Realtime Database → Create database → Bölge seçin → Test mode        ║
+║                                                                              ║
+║  3. Web App Ekleyin                                                         ║
+║     a) Project Settings → "Add app" → Web (</>)                             ║
+║     b) App nickname girin → Register app                                    ║
+║     c) Gösterilen firebaseConfig nesnesini aşağıdaki                        ║
+║        YOUR_FIREBASE_CONFIG bölümüne yapıştırın                             ║
+║                                                                              ║
+║  4. Firestore Kuralları (Firestore → Rules sekmesi)                        ║
+║     ─────────────────────────────────────────────                           ║
+║     rules_version = '2';                                                    ║
+║     service cloud.firestore {                                               ║
+║       match /databases/{database}/documents {                               ║
+║         // Kullanıcı kendi profilini okuyup yazabilir                       ║
+║         match /users/{userId} {                                             ║
+║           allow read, write: if request.auth != null                        ║
+║                               && request.auth.uid == userId;                ║
+║         }                                                                   ║
+║         // Oturumlar: sadece kendi oturumlarına erişim                      ║
+║         match /sessions/{sessionId} {                                       ║
+║           allow read: if request.auth != null                               ║
+║                        && resource.data.userId == request.auth.uid;         ║
+║           allow write: if request.auth != null                              ║
+║                         && request.resource.data.userId == request.auth.uid;║
+║         }                                                                   ║
+║         // Leaderboard: herkes okuyabilir                                  ║
+║         match /leaderboard/{docId} {                                        ║
+║           allow read: if true;                                              ║
+║           allow write: if request.auth != null;                             ║
+║         }                                                                   ║
+║       }                                                                     ║
+║     }                                                                       ║
+║                                                                              ║
+║  5. Realtime Database Kuralları (Realtime DB → Rules)                      ║
+║     ─────────────────────────────────────────────────                       ║
+║     {                                                                        ║
+║       "rules": {                                                            ║
+║         "presence": {                                                       ║
+║           "$uid": {                                                         ║
+║             ".read": true,                                                  ║
+║             ".write": "auth != null && auth.uid == $uid"                    ║
+║           }                                                                 ║
+║         }                                                                   ║
+║       }                                                                     ║
+║     }                                                                       ║
+║                                                                              ║
+║  6. GitHub Pages Yayını                                                     ║
+║     a) Bu dosyayı GitHub reposuna yükleyin                                  ║
+║     b) Settings → Pages → Source: main branch / root                       ║
+║     c) Firebase Console → Authentication → Settings →                      ║
+║        Authorized domains → GitHub Pages URL'nizi ekleyin                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+-->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Çalışma Takip</title>
+
+  <!-- Google Fonts: Syne (display) + DM Sans (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase SDK (modular via CDN compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════
+   CSS VARIABLES & RESET
+═══════════════════════════════════════════ */
+:root {
+  --bg: #0d0f14;
+  --bg2: #131720;
+  --bg3: #1a1f2e;
+  --card: #1e2436;
+  --card2: #242b3d;
+  --border: #2e3650;
+  --accent: #6c63ff;
+  --accent2: #a78bfa;
+  --accent3: #34d399;
+  --gold: #fbbf24;
+  --text: #e8eaf6;
+  --text2: #9aa5c4;
+  --text3: #5c6888;
+  --danger: #f87171;
+  --warning: #fb923c;
+  --shadow: 0 4px 24px rgba(0,0,0,.45);
+  --radius: 14px;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f0f2fa;
+    --bg2: #e8ebf6;
+    --bg3: #dde1f0;
+    --card: #ffffff;
+    --card2: #f5f7ff;
+    --border: #d0d5ea;
+    --text: #1a1f35;
+    --text2: #4a5380;
+    --text3: #8892b0;
+    --shadow: 0 4px 24px rgba(0,0,0,.10);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+
+.topbar-logo {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent2);
+  letter-spacing: -0.5px;
+}
+.topbar-logo span { color: var(--text3); font-weight: 400; }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 14px 4px 6px;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.user-badge:hover { border-color: var(--accent); }
+.user-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; color: #fff;
+}
+
+/* NAV TABS */
+.nav-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 22px;
+  height: 46px;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: var(--font-body);
+}
+.nav-tab:hover { color: var(--text2); }
+.nav-tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+.nav-tab svg { width: 15px; height: 15px; }
+
+/* MAIN CONTENT */
+.main { flex: 1; padding: 24px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-family: var(--font-display);
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .18s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(108,99,255,.4);
+}
+.btn-primary:hover { background: var(--accent2); box-shadow: 0 4px 18px rgba(167,139,250,.4); }
+.btn-secondary {
+  background: var(--card2);
+  color: var(--text2);
+  border-color: var(--border);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+.btn-danger { background: rgba(248,113,113,.15); color: var(--danger); border-color: rgba(248,113,113,.3); }
+.btn-danger:hover { background: rgba(248,113,113,.25); }
+.btn-success { background: rgba(52,211,153,.15); color: var(--accent3); border-color: rgba(52,211,153,.3); }
+.btn-success:hover { background: rgba(52,211,153,.25); }
+.btn-sm { padding: 5px 12px; font-size: .78rem; }
+.btn-icon { padding: 7px; border-radius: 7px; }
+
+/* ═══════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════ */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.form-input, .form-select {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: .88rem;
+  color: var(--text);
+  transition: border-color .2s;
+  outline: none;
+}
+.form-input:focus, .form-select:focus { border-color: var(--accent); }
+.form-select option { background: var(--bg2); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════ */
+.progress-wrap {
+  background: var(--bg2);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width .5s ease;
+}
+.progress-bar.green { background: linear-gradient(90deg, var(--accent3), #10b981); }
+
+/* ═══════════════════════════════════════════
+   STAT CARDS
+═══════════════════════════════════════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.stat-card-label {
+  font-size: .74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+.stat-card-value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-card-sub { font-size: .76rem; color: var(--text3); margin-top: 4px; }
+
+/* ═══════════════════════════════════════════
+   PRESENCE / MASA ANİMASYONU
+═══════════════════════════════════════════ */
+#presence-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+#presence-section .card-title { margin-bottom: 12px; }
+
+.presence-canvas-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.empty-presence {
+  text-align: center;
+  padding: 28px 0;
+  color: var(--text3);
+  font-size: .9rem;
+}
+.empty-presence svg { width: 48px; height: 48px; margin-bottom: 8px; opacity: .3; }
+
+/* ═══════════════════════════════════════════
+   ACTIVITY LIST
+═══════════════════════════════════════════ */
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+}
+.activity-item:hover { border-color: var(--accent); }
+.activity-item.running { border-color: var(--accent3); }
+.activity-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.activity-info { flex: 1; min-width: 0; }
+.activity-name {
+  font-weight: 600;
+  font-size: .9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-meta { font-size: .75rem; color: var(--text3); margin-top: 2px; }
+.activity-timer {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent2);
+  min-width: 60px;
+  text-align: right;
+}
+.activity-timer.running { color: var(--accent3); }
+.activity-actions { display: flex; gap: 6px; }
+
+/* ═══════════════════════════════════════════
+   LEADERBOARD
+═══════════════════════════════════════════ */
+.lb-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.lb-tab {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  transition: all .18s;
+  font-family: var(--font-body);
+}
+.lb-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  transition: border-color .2s;
+}
+.lb-row:hover { border-color: var(--accent); }
+.lb-row.me { border-color: var(--accent); background: rgba(108,99,255,.08); }
+.lb-rank {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  min-width: 32px;
+  text-align: center;
+  color: var(--text3);
+}
+.lb-rank.gold { color: var(--gold); }
+.lb-rank.silver { color: #9ca3af; }
+.lb-rank.bronze { color: #cd7c54; }
+.lb-name { flex: 1; font-size: .9rem; font-weight: 500; }
+.lb-time {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: .9rem;
+  color: var(--accent2);
+}
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn .18s ease;
+}
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  animation: slideUp .22s ease;
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: .85rem;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  animation: slideIn .25s ease;
+}
+.toast.success { border-left-color: var(--accent3); }
+.toast.error { border-left-color: var(--danger); }
+@keyframes slideIn { from { transform: translateX(30px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+
+/* ═══════════════════════════════════════════
+   LOADING
+═══════════════════════════════════════════ */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.spinner {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.text-sm { font-size: .82rem; color: var(--text2); }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 600;
+}
+.badge-purple { background: rgba(108,99,255,.2); color: var(--accent2); }
+.badge-green { background: rgba(52,211,153,.2); color: var(--accent3); }
+.badge-orange { background: rgba(251,146,60,.2); color: var(--warning); }
+.badge-blue { background: rgba(96,165,250,.2); color: #60a5fa; }
+.badge-gray { background: var(--card2); color: var(--text3); }
+
+.category-colors {
+  --c-coding: #6c63ff;
+  --c-design: #f472b6;
+  --c-meeting: #fb923c;
+  --c-research: #34d399;
+  --c-writing: #60a5fa;
+  --c-other: #9ca3af;
+}
+
+/* canvas SVG masa */
+#desk-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div style="font-family:var(--font-display);font-size:1rem;color:var(--text2);">Bağlanıyor…</div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-logo">Fokus<span>.</span></div>
+    <div class="topbar-right">
+      <div class="user-badge" id="user-badge-btn" title="Kullanıcı adını değiştir">
+        <div class="user-avatar" id="user-avatar-text">?</div>
+        <span id="user-display-name">Yükleniyor…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Ana Sayfa
+    </button>
+    <button class="nav-tab" data-tab="activities">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Etkinlikler
+    </button>
+    <button class="nav-tab" data-tab="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      İstatistik
+    </button>
+    <button class="nav-tab" data-tab="leaderboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 20 18 10"/><polyline points="12 20 12 4"/><polyline points="6 20 6 14"/></svg>
+      Sıralama
+    </button>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ═══════════ TAB: ANA SAYFA ═══════════ -->
+    <div id="tab-home">
+      <!-- Günlük Hedef -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Günlük Hedef
+        </div>
+        <div class="flex items-center gap-3" style="margin-bottom:10px">
+          <div style="flex:1">
+            <div class="flex items-center gap-2" style="margin-bottom:6px">
+              <span id="today-minutes" style="font-family:var(--font-display);font-size:2rem;font-weight:800">0</span>
+              <span style="color:var(--text3);font-size:.9rem">/ <span id="goal-minutes">120</span> dk</span>
+              <span id="goal-badge" class="badge badge-purple" style="margin-left:auto">%<span id="goal-pct">0</span></span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-bar" id="goal-bar" style="width:0%"></div>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="edit-goal-btn">Hedefi Düzenle</button>
+        </div>
+        <div class="text-sm" id="goal-status-text">Bugün henüz çalışma kaydı yok.</div>
+      </div>
+
+      <!-- Masa / Presence -->
+      <div id="presence-section">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          Şu An Çalışanlar
+          <span id="online-count-badge" class="badge badge-green" style="margin-left:auto">0 kişi</span>
+        </div>
+        <div id="presence-container">
+          <div class="empty-presence" id="empty-presence">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
+            <p>Şu an başka kimse çalışmıyor.<br>İlk sen başla!</p>
+          </div>
+          <!-- SVG masa buraya dinamik eklenir -->
+        </div>
+      </div>
+
+      <!-- Hızlı Süre Girişi -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Manuel Çalışma Ekle
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Süre (dakika)</label>
+            <input type="number" class="form-input" id="manual-minutes" min="1" max="1440" placeholder="60" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Not (isteğe bağlı)</label>
+            <input type="text" class="form-input" id="manual-note" placeholder="Ne çalıştın?" />
+          </div>
+        </div>
+        <button class="btn btn-primary mt-3" id="manual-add-btn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Süreyi Kaydet
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════ TAB: ETKİNLİKLER ═══════════ -->
+    <div id="tab-activities" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Yeni Etkinlik
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Etkinlik Adı</label>
+            <input type="text" class="form-input" id="act-name" placeholder="Proje X geliştirme…" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Tahmini Süre (dk)</label>
+            <input type="number" class="form-input" id="act-estimated" min="1" placeholder="90" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kategori</label>
+          <select class="form-select" id="act-category">
+            <option value="coding">💻 Kodlama</option>
+            <option value="design">🎨 Tasarım</option>
+            <option value="meeting">🗣️ Toplantı</option>
+            <option value="research">🔬 Araştırma</option>
+            <option value="writing">✍️ Yazma</option>
+            <option value="other">📌 Diğer</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="add-activity-btn">Etkinlik Ekle</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Etkinlik Listesi
+        </div>
+        <div id="activity-list">
+          <div class="text-sm" style="text-align:center;padding:20px">Henüz etkinlik yok.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ TAB: İSTATİSTİK ═══════════ -->
+    <div id="tab-stats" class="hidden">
+      <div class="stats-grid" id="stats-summary">
+        <div class="stat-card">
+          <div class="stat-card-label">Bugün</div>
+          <div class="stat-card-value" id="stat-today">0</div>
+          <div class="stat-card-sub">dakika</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Bu Hafta</div>
+          <div class="stat-card-value" id="stat-week">0</div>
+          <div class="stat-card-sub">dakika</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Bu Ay</div>
+          <div class="stat-card-value" id="stat-month">0</div>
+          <div class="stat-card-sub">dakika</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Bu Yıl</div>
+          <div class="stat-card-value" id="stat-year">0</div>
+          <div class="stat-card-sub">dakika</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Son 7 Gün</div>
+        <canvas id="chart-weekly" height="80"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Aylık Karşılaştırma</div>
+        <canvas id="chart-monthly" height="80"></canvas>
+      </div>
+    </div>
+
+    <!-- ═══════════ TAB: SIRALAMA ═══════════ -->
+    <div id="tab-leaderboard" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 20 18 10"/><polyline points="12 20 12 4"/><polyline points="6 20 6 14"/></svg>
+          Liderlik Tablosu
+        </div>
+        <div class="lb-tabs">
+          <button class="lb-tab active" data-period="daily">Günlük</button>
+          <button class="lb-tab" data-period="weekly">Haftalık</button>
+          <button class="lb-tab" data-period="monthly">Aylık</button>
+          <button class="lb-tab" data-period="yearly">Yıllık</button>
+        </div>
+        <div id="leaderboard-list">
+          <div class="text-sm" style="text-align:center;padding:20px">Yükleniyor…</div>
+        </div>
+        <div class="text-sm mt-3" style="text-align:center;color:var(--text3)">Her dakikada bir güncellenir</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: KULLANICI ADI DEĞİŞTİR -->
+<div class="modal-overlay hidden" id="modal-username">
+  <div class="modal-box">
+    <div class="modal-title">Kullanıcı Adını Değiştir</div>
+    <div class="form-group">
+      <label class="form-label">Yeni Kullanıcı Adı</label>
+      <input type="text" class="form-input" id="new-username-input" maxlength="30" placeholder="Bir isim seçin…" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="modal-username-cancel">İptal</button>
+      <button class="btn btn-primary" id="modal-username-save">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HEDEF DÜZENLE -->
+<div class="modal-overlay hidden" id="modal-goal">
+  <div class="modal-box">
+    <div class="modal-title">Günlük Hedef</div>
+    <div class="form-group">
+      <label class="form-label">Hedef (dakika)</label>
+      <input type="number" class="form-input" id="new-goal-input" min="10" max="1440" placeholder="120" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="modal-goal-cancel">İptal</button>
+      <button class="btn btn-primary" id="modal-goal-save">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   ▶ FIREBASE YAPILANDIRMASI
+   Bu bölümü kendi Firebase projenizin bilgileriyle doldurun!
+   Firebase Console → Project Settings → Your apps → SDK setup
+═══════════════════════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDCuodwSDZ_7ExK8hT6cTTV68ANs7OCLc4",
+  authDomain: "calisalim.firebaseapp.com",
+  databaseURL: "https://calisalim-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "calisalim",
+  storageBucket: "calisalim.firebasestorage.app",
+  messagingSenderId: "529858486083",
+  appId: "1:529858486083:web:a169a0259c544ede1599f6",
+  measurementId: "G-7JQD2XZ2ND"
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Firebase başlatma
+═══════════════════════════════════════════════════════════════════════ */
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const rtdb = firebase.database();
+
+/* ════════════════════════════════════════════
+   GLOBAL DURUM
+════════════════════════════════════════════ */
+let currentUser    = null;    // Firebase kullanıcısı
+let userProfile    = null;    // Firestore profil
+let activities     = [];      // Etkinlik listesi
+let sessions       = [];      // Bugünkü oturumlar
+let runningTimers  = {};      // { activityId: { interval, elapsed } }
+let weeklyChart    = null;
+let monthlyChart   = null;
+let lbPeriod       = 'daily';
+let lbRefreshTimer = null;
+
+/* ════════════════════════════════════════════
+   YARDIMcı FONKSİYONLAR
+════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
+  el.textContent = msg;
+  $('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function formatMin(min) {
+  if (min < 60) return min + ' dk';
+  const h = Math.floor(min / 60), m = min % 60;
+  return h + 's ' + (m > 0 ? m + 'dk' : '');
+}
+
+function formatTimer(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function dateKey(date = new Date()) {
+  return date.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function weekKey(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - d.getDay() + 1); // Monday
+  return dateKey(d);
+}
+
+function monthKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+}
+
+function yearKey(date = new Date()) {
+  return `${date.getFullYear()}`;
+}
+
+function randomName() {
+  const adj = ['Hızlı','Meraklı','Odaklı','Kararlı','Enerjik','Sabırlı'];
+  const noun = ['Kartal','Aslan','Ejderha','Panda','Köpek','Kaplan'];
+  const num = Math.floor(Math.random() * 999);
+  return adj[Math.floor(Math.random()*adj.length)] + noun[Math.floor(Math.random()*noun.length)] + num;
+}
+
+const CATEGORY_META = {
+  coding:   { label: '💻 Kodlama',   color: '#6c63ff' },
+  design:   { label: '🎨 Tasarım',   color: '#f472b6' },
+  meeting:  { label: '🗣️ Toplantı',  color: '#fb923c' },
+  research: { label: '🔬 Araştırma', color: '#34d399' },
+  writing:  { label: '✍️ Yazma',     color: '#60a5fa' },
+  other:    { label: '📌 Diğer',     color: '#9ca3af' },
+};
+
+/* ════════════════════════════════════════════
+   KIMLIK DOĞRULAMA
+════════════════════════════════════════════ */
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    currentUser = user;
+    await loadUserProfile();
+    setupPresence();
+    listenSessions();
+    listenActivities();
+    renderUI();
+    $('loading-screen').classList.add('hidden');
+    $('app').classList.remove('hidden');
+  } else {
+    // Anonim giriş
+    try {
+      await auth.signInAnonymously();
+    } catch (e) {
+      $('loading-screen').innerHTML = `<p style="color:var(--danger);padding:20px;text-align:center">Firebase bağlantısı başarısız. Lütfen firebaseConfig ayarlarını kontrol edin.<br><small>${e.message}</small></p>`;
+    }
+  }
+});
+
+/* ════════════════════════════════════════════
+   KULLANICI PROFİLİ
+════════════════════════════════════════════ */
+async function loadUserProfile() {
+  const ref = db.collection('users').doc(currentUser.uid);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    const name = randomName();
+    userProfile = { displayName: name, dailyGoal: 120, createdAt: new Date() };
+    await ref.set(userProfile);
+  } else {
+    userProfile = snap.data();
+  }
+  updateUserBadge();
+}
+
+function updateUserBadge() {
+  const name = userProfile.displayName || 'Anonim';
+  $('user-display-name').textContent = name;
+  $('user-avatar-text').textContent  = name.charAt(0).toUpperCase();
+  $('goal-minutes').textContent      = userProfile.dailyGoal || 120;
+}
+
+async function saveUserProfile(updates) {
+  Object.assign(userProfile, updates);
+  await db.collection('users').doc(currentUser.uid).update(updates);
+  updateUserBadge();
+}
+
+/* ════════════════════════════════════════════
+   PRESENCE — REALTIME DATABASE
+════════════════════════════════════════════ */
+function setupPresence() {
+  const uid      = currentUser.uid;
+  const presRef  = rtdb.ref(`presence/${uid}`);
+  const connRef  = rtdb.ref('.info/connected');
+
+  connRef.on('value', snap => {
+    if (!snap.val()) return;
+    // Bağlantı kesilince sil
+    presRef.onDisconnect().remove();
+    // Varlığı yaz
+    presRef.set({
+      uid,
+      name: userProfile.displayName,
+      online: true,
+      since: Date.now()
+    });
+  });
+
+  // Tüm presence'ı dinle
+  rtdb.ref('presence').on('value', snap => {
+    const users = [];
+    snap.forEach(child => {
+      users.push(child.val());
+    });
+    renderPresence(users);
+    $('online-count-badge').textContent = users.length + ' kişi';
+  });
+}
+
+function renderPresence(users) {
+  const container = $('presence-container');
+  const emptyEl   = $('empty-presence');
+
+  if (users.length === 0) {
+    emptyEl.classList.remove('hidden');
+    const old = container.querySelector('#desk-svg');
+    if (old) old.remove();
+    return;
+  }
+
+  emptyEl.classList.add('hidden');
+
+  // SVG masa animasyonu
+  const W = 560, H = 260;
+  const cx = W/2, cy = H/2 + 10;
+  const rx = 180, ry = 90;
+  const display = users.slice(0, 10);
+  const n = display.length;
+  const COLORS = ['#6c63ff','#f472b6','#34d399','#fb923c','#60a5fa','#a78bfa','#fbbf24','#f87171','#2dd4bf','#e879f9'];
+
+  const chairs = display.map((u, i) => {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    const x = cx + rx * Math.cos(angle);
+    const y = cy + ry * Math.sin(angle);
+    const color = COLORS[i % COLORS.length];
+    const initials = (u.name || '?').charAt(0).toUpperCase();
+    return `
+      <g transform="translate(${x},${y})">
+        <circle r="22" fill="${color}" opacity=".18"/>
+        <circle r="18" fill="${color}" opacity=".35"/>
+        <circle r="14" fill="${color}"/>
+        <text text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="11" font-family="'DM Sans',sans-serif" font-weight="700">${initials}</text>
+        <text y="30" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Sans',sans-serif">${(u.name||'Anonim').substring(0,12)}</text>
+        <circle r="4" cx="16" cy="-16" fill="#34d399">
+          <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/>
+        </circle>
+      </g>`;
+  }).join('');
+
+  const svg = `<svg id="desk-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+    <!-- Masa -->
+    <ellipse cx="${cx}" cy="${cy}" rx="145" ry="68" fill="var(--card2)" stroke="var(--border)" stroke-width="2"/>
+    <text x="${cx}" y="${cy+4}" text-anchor="middle" dominant-baseline="central" fill="var(--text3)" font-size="11" font-family="'DM Sans',sans-serif">Çalışma Masası</text>
+    ${chairs}
+  </svg>`;
+
+  const oldSvg = container.querySelector('#desk-svg');
+  if (oldSvg) oldSvg.remove();
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = svg;
+  container.appendChild(wrap.firstElementChild);
+
+  // Scroll notu
+  if (users.length > 10) {
+    let note = container.querySelector('.presence-note');
+    if (!note) {
+      note = document.createElement('p');
+      note.className = 'presence-note text-sm mt-2';
+      note.style.textAlign = 'center';
+      container.appendChild(note);
+    }
+    note.textContent = `+${users.length - 10} kişi daha çalışıyor`;
+  }
+}
+
+/* ════════════════════════════════════════════
+   OTURUMLAR (SESSIONS)
+════════════════════════════════════════════ */
+function listenSessions() {
+  const today = dateKey();
+  db.collection('sessions')
+    .where('userId', '==', currentUser.uid)
+    .where('dateKey', '==', today)
+    .onSnapshot(snap => {
+      sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateGoalDisplay();
+      if ($('tab-stats').offsetParent !== null) renderStats();
+    });
+}
+
+async function addSession(minutes, note = '', activityId = null) {
+  if (!minutes || minutes < 1) return;
+  const now = new Date();
+  await db.collection('sessions').add({
+    userId:     currentUser.uid,
+    userName:   userProfile.displayName,
+    minutes:    parseInt(minutes),
+    note:       note,
+    activityId: activityId,
+    dateKey:    dateKey(now),
+    weekKey:    weekKey(now),
+    monthKey:   monthKey(now),
+    yearKey:    yearKey(now),
+    createdAt:  firebase.firestore.FieldValue.serverTimestamp()
+  });
+  updateLeaderboardCache(parseInt(minutes));
+}
+
+async function updateLeaderboardCache(minutes) {
+  const uid  = currentUser.uid;
+  const name = userProfile.displayName;
+  const now  = new Date();
+  const lbRef = db.collection('leaderboard').doc(uid);
+  const snap  = await lbRef.get();
+  const data  = snap.exists ? snap.data() : {};
+
+  await lbRef.set({
+    userId:   uid,
+    userName: name,
+    daily:    (data.daily   || 0) + (dateKey(now) === (data.lastDailyKey   || '') ? minutes : minutes),
+    weekly:   (data.weekly  || 0) + (weekKey(now) === (data.lastWeeklyKey  || '') ? minutes : minutes),
+    monthly:  (data.monthly || 0) + (monthKey(now) === (data.lastMonthKey  || '') ? minutes : minutes),
+    yearly:   (data.yearly  || 0) + (yearKey(now) === (data.lastYearKey    || '') ? minutes : minutes),
+    lastDailyKey:   dateKey(now),
+    lastWeeklyKey:  weekKey(now),
+    lastMonthKey:   monthKey(now),
+    lastYearKey:    yearKey(now),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+}
+
+/* ════════════════════════════════════════════
+   GÜNLÜK HEDEF GÖSTERGE
+════════════════════════════════════════════ */
+function updateGoalDisplay() {
+  const total = sessions.reduce((s, sess) => s + (sess.minutes || 0), 0);
+  const goal  = userProfile.dailyGoal || 120;
+  const pct   = Math.min(100, Math.round(total / goal * 100));
+
+  $('today-minutes').textContent = total;
+  $('goal-minutes').textContent  = goal;
+  $('goal-pct').textContent      = pct;
+  $('goal-bar').style.width      = pct + '%';
+
+  if (pct >= 100) {
+    $('goal-bar').classList.add('green');
+    $('goal-status-text').textContent = '🎉 Günlük hedefe ulaştın! Harika iş!';
+  } else {
+    $('goal-bar').classList.remove('green');
+    const kalan = goal - total;
+    $('goal-status-text').textContent = kalan > 0 ? `Hedefe ${formatMin(kalan)} kaldı.` : 'Hedefe ulaştın!';
+  }
+
+  // İstatistik sekmesi güncelle
+  $('stat-today').textContent = total;
+}
+
+/* ════════════════════════════════════════════
+   ETKİNLİKLER
+════════════════════════════════════════════ */
+function listenActivities() {
+  db.collection('users').doc(currentUser.uid)
+    .collection('activities')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snap => {
+      activities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderActivities();
+    });
+}
+
+async function addActivity() {
+  const name      = $('act-name').value.trim();
+  const estimated = parseInt($('act-estimated').value);
+  const category  = $('act-category').value;
+
+  if (!name) { toast('Etkinlik adı giriniz.', 'error'); return; }
+  if (!estimated || estimated < 1) { toast('Geçerli bir süre giriniz.', 'error'); return; }
+
+  await db.collection('users').doc(currentUser.uid)
+    .collection('activities').add({
+      name, estimated, category,
+      elapsed: 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+  $('act-name').value = '';
+  $('act-estimated').value = '';
+  toast('Etkinlik eklendi!', 'success');
+}
+
+async function deleteActivity(id) {
+  if (runningTimers[id]) stopTimer(id, false);
+  await db.collection('users').doc(currentUser.uid)
+    .collection('activities').doc(id).delete();
+}
+
+async function updateActivityElapsed(id, elapsed) {
+  await db.collection('users').doc(currentUser.uid)
+    .collection('activities').doc(id).update({ elapsed });
+}
+
+function renderActivities() {
+  const list = $('activity-list');
+  if (!activities.length) {
+    list.innerHTML = '<div class="text-sm" style="text-align:center;padding:20px">Henüz etkinlik yok.</div>';
+    return;
+  }
+
+  list.innerHTML = activities.map(act => {
+    const meta    = CATEGORY_META[act.category] || CATEGORY_META.other;
+    const elapsed = (runningTimers[act.id]?.elapsed ?? act.elapsed) || 0;
+    const kalan   = Math.max(0, (act.estimated || 0) - Math.floor(elapsed / 60));
+    const isRun   = !!runningTimers[act.id];
+    const timerSec = runningTimers[act.id] ? runningTimers[act.id].elapsed : (act.elapsed || 0);
+
+    return `<div class="activity-item ${isRun ? 'running' : ''}" id="act-item-${act.id}">
+      <div class="activity-dot" style="background:${meta.color}"></div>
+      <div class="activity-info">
+        <div class="activity-name">${act.name}</div>
+        <div class="activity-meta">
+          ${meta.label} · Tahmini: ${act.estimated}dk · Kalan: ${kalan}dk
+        </div>
+        <div class="progress-wrap mt-2" style="height:4px">
+          <div class="progress-bar" style="width:${Math.min(100, Math.round(elapsed/60/act.estimated*100))}%;background:${meta.color}"></div>
+        </div>
+      </div>
+      <div class="activity-timer ${isRun ? 'running' : ''}" id="timer-${act.id}">${formatTimer(timerSec)}</div>
+      <div class="activity-actions">
+        <button class="btn btn-sm ${isRun ? 'btn-danger' : 'btn-success'}" onclick="toggleTimer('${act.id}')">
+          ${isRun ? '⏸ Dur' : '▶ Başla'}
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')">↺</button>
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="deleteActivity('${act.id}')" title="Sil">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTimer(id) {
+  if (runningTimers[id]) {
+    stopTimer(id, true);
+  } else {
+    startTimer(id);
+  }
+}
+
+function startTimer(id) {
+  const act = activities.find(a => a.id === id);
+  if (!act) return;
+
+  // Diğer zamanlayıcıları durdur
+  Object.keys(runningTimers).forEach(tid => { if (tid !== id) stopTimer(tid, true); });
+
+  const startElapsed = act.elapsed || 0;
+  const startTime    = Date.now() - startElapsed * 1000;
+
+  runningTimers[id] = {
+    elapsed: startElapsed,
+    interval: setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      runningTimers[id].elapsed = elapsed;
+      const el = $(`timer-${id}`);
+      if (el) el.textContent = formatTimer(elapsed);
+    }, 1000)
+  };
+
+  renderActivities();
+  toast('Zamanlayıcı başlatıldı ▶', 'success');
+}
+
+async function stopTimer(id, save = true) {
+  if (!runningTimers[id]) return;
+  clearInterval(runningTimers[id].interval);
+  const elapsed = runningTimers[id].elapsed;
+  delete runningTimers[id];
+
+  if (save && elapsed > 0) {
+    await updateActivityElapsed(id, elapsed);
+    const minutes = Math.floor(elapsed / 60);
+    if (minutes > 0) {
+      const act = activities.find(a => a.id === id);
+      await addSession(minutes, act ? act.name : '', id);
+      toast(`${minutes} dakika kaydedildi!`, 'success');
+    }
+  }
+
+  renderActivities();
+}
+
+async function resetTimer(id) {
+  if (runningTimers[id]) stopTimer(id, false);
+  await updateActivityElapsed(id, 0);
+  toast('Zamanlayıcı sıfırlandı.', 'info');
+}
+
+/* ════════════════════════════════════════════
+   İSTATİSTİKLER
+════════════════════════════════════════════ */
+async function renderStats() {
+  // Bu hafta, ay, yıl oturumlarını çek
+  const uid = currentUser.uid;
+  const now = new Date();
+
+  const [weekSnap, monthSnap, yearSnap] = await Promise.all([
+    db.collection('sessions').where('userId','==',uid).where('weekKey','==',weekKey(now)).get(),
+    db.collection('sessions').where('userId','==',uid).where('monthKey','==',monthKey(now)).get(),
+    db.collection('sessions').where('userId','==',uid).where('yearKey','==',yearKey(now)).get(),
+  ]);
+
+  const sumMin = snap => snap.docs.reduce((s, d) => s + (d.data().minutes||0), 0);
+
+  $('stat-week').textContent  = sumMin(weekSnap);
+  $('stat-month').textContent = sumMin(monthSnap);
+  $('stat-year').textContent  = sumMin(yearSnap);
+
+  // Son 7 gün grafik
+  const last7 = [];
+  const labels7 = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    labels7.push(d.toLocaleDateString('tr-TR',{weekday:'short'}));
+    const dk = dateKey(d);
+    const dayMin = weekSnap.docs
+      .filter(doc => doc.data().dateKey === dk)
+      .reduce((s, doc) => s + (doc.data().minutes||0), 0);
+    last7.push(dayMin);
+  }
+
+  // Son 6 ay grafik
+  const last6m = [], labels6m = [];
+  const monthSessions = yearSnap.docs.map(d => d.data());
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    labels6m.push(d.toLocaleDateString('tr-TR',{month:'short'}));
+    const mk = monthKey(d);
+    const mMin = monthSessions.filter(s => s.monthKey === mk).reduce((s,d)=>s+(d.minutes||0),0);
+    last6m.push(mMin);
+  }
+
+  const chartColors = {
+    bg: '#1e2436',
+    accent: '#6c63ff',
+    accent2: '#a78bfa',
+    text2: '#9aa5c4',
+    border: '#2e3650'
+  };
+
+  if (weeklyChart) weeklyChart.destroy();
+  weeklyChart = new Chart($('chart-weekly'), {
+    type: 'bar',
+    data: {
+      labels: labels7,
+      datasets: [{
+        label: 'Dakika',
+        data: last7,
+        backgroundColor: labels7.map((_,i) => i === 6 ? '#6c63ff' : 'rgba(108,99,255,.35)'),
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9aa5c4' }, grid: { color: 'rgba(46,54,80,.5)' } },
+        y: { ticks: { color: '#9aa5c4' }, grid: { color: 'rgba(46,54,80,.5)' } }
+      }
+    }
+  });
+
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart($('chart-monthly'), {
+    type: 'line',
+    data: {
+      labels: labels6m,
+      datasets: [{
+        label: 'Dakika',
+        data: last6m,
+        borderColor: '#a78bfa',
+        backgroundColor: 'rgba(167,139,250,.15)',
+        tension: .4,
+        fill: true,
+        pointBackgroundColor: '#a78bfa',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#9aa5c4' }, grid: { color: 'rgba(46,54,80,.5)' } },
+        y: { ticks: { color: '#9aa5c4' }, grid: { color: 'rgba(46,54,80,.5)' } }
+      }
+    }
+  });
+}
+
+/* ════════════════════════════════════════════
+   LİDERLİK TABLOSU
+════════════════════════════════════════════ */
+async function loadLeaderboard(period) {
+  lbPeriod = period;
+  const list = $('leaderboard-list');
+  list.innerHTML = '<div class="text-sm" style="text-align:center;padding:20px">Yükleniyor…</div>';
+
+  const snap = await db.collection('leaderboard')
+    .orderBy(period, 'desc')
+    .limit(20)
+    .get();
+
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="text-sm" style="text-align:center;padding:20px">Henüz kayıt yok.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map((row, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+    const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+    const isMe      = row.userId === currentUser.uid;
+    return `<div class="lb-row ${isMe ? 'me' : ''}">
+      <div class="lb-rank ${rankClass}">${rankLabel}</div>
+      <div class="lb-name">${row.userName || 'Anonim'} ${isMe ? '<span class="badge badge-purple" style="margin-left:6px;font-size:.65rem">Sen</span>' : ''}</div>
+      <div class="lb-time">${formatMin(row[period] || 0)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════
+   UI BAŞLATMA & SEKMELER
+════════════════════════════════════════════ */
+function renderUI() {
+  updateGoalDisplay();
+}
+
+// Sekme geçişi
+document.querySelectorAll('.nav-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
+    $(`tab-${tab}`).classList.remove('hidden');
+    if (tab === 'stats') renderStats();
+    if (tab === 'leaderboard') {
+      loadLeaderboard(lbPeriod);
+      if (!lbRefreshTimer) {
+        lbRefreshTimer = setInterval(() => loadLeaderboard(lbPeriod), 60000);
+      }
+    } else {
+      clearInterval(lbRefreshTimer);
+      lbRefreshTimer = null;
+    }
+  });
+});
+
+// Leaderboard period tabs
+document.querySelectorAll('.lb-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadLeaderboard(btn.dataset.period);
+  });
+});
+
+/* ════════════════════════════════════════════
+   MODAL: KULLANICI ADI
+════════════════════════════════════════════ */
+$('user-badge-btn').addEventListener('click', () => {
+  $('new-username-input').value = userProfile.displayName || '';
+  $('modal-username').classList.remove('hidden');
+  setTimeout(() => $('new-username-input').focus(), 50);
+});
+$('modal-username-cancel').addEventListener('click', () => $('modal-username').classList.add('hidden'));
+$('modal-username-save').addEventListener('click', async () => {
+  const name = $('new-username-input').value.trim();
+  if (!name) { toast('Geçerli bir isim giriniz.', 'error'); return; }
+  await saveUserProfile({ displayName: name });
+  // Presence güncelle
+  rtdb.ref(`presence/${currentUser.uid}`).update({ name });
+  $('modal-username').classList.add('hidden');
+  toast('İsim güncellendi!', 'success');
+});
+
+/* ════════════════════════════════════════════
+   MODAL: HEDEF
+════════════════════════════════════════════ */
+$('edit-goal-btn').addEventListener('click', () => {
+  $('new-goal-input').value = userProfile.dailyGoal || 120;
+  $('modal-goal').classList.remove('hidden');
+  setTimeout(() => $('new-goal-input').focus(), 50);
+});
+$('modal-goal-cancel').addEventListener('click', () => $('modal-goal').classList.add('hidden'));
+$('modal-goal-save').addEventListener('click', async () => {
+  const goal = parseInt($('new-goal-input').value);
+  if (!goal || goal < 10) { toast('Geçerli bir hedef giriniz (min 10 dk).', 'error'); return; }
+  await saveUserProfile({ dailyGoal: goal });
+  $('modal-goal').classList.add('hidden');
+  updateGoalDisplay();
+  toast('Hedef güncellendi!', 'success');
+});
+
+// Enter tuşu desteği
+$('new-username-input').addEventListener('keyup', e => { if (e.key === 'Enter') $('modal-username-save').click(); });
+$('new-goal-input').addEventListener('keyup',    e => { if (e.key === 'Enter') $('modal-goal-save').click(); });
+
+/* ════════════════════════════════════════════
+   MANUEL SÜRE EKLE
+════════════════════════════════════════════ */
+$('manual-add-btn').addEventListener('click', async () => {
+  const min  = parseInt($('manual-minutes').value);
+  const note = $('manual-note').value.trim();
+  if (!min || min < 1) { toast('Geçerli bir süre giriniz.', 'error'); return; }
+  await addSession(min, note);
+  $('manual-minutes').value = '';
+  $('manual-note').value    = '';
+  toast(`${min} dakika kaydedildi!`, 'success');
+});
+
+$('manual-minutes').addEventListener('keyup', e => { if (e.key === 'Enter') $('manual-add-btn').click(); });
+
+/* ════════════════════════════════════════════
+   ETKİNLİK EKLE BUTONU
+════════════════════════════════════════════ */
+$('add-activity-btn').addEventListener('click', addActivity);
+$('act-name').addEventListener('keyup', e => { if (e.key === 'Enter') addActivity(); });
+
+/* ════════════════════════════════════════════
+   OVERLAY KAPATMA (dış tıklama)
+════════════════════════════════════════════ */
+['modal-username','modal-goal'].forEach(id => {
+  $(id).addEventListener('click', e => { if (e.target === $(id)) $(id).classList.add('hidden'); });
+});
+</script>
+</body>
+</html>
