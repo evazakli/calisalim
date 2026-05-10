@@ -75,7 +75,6 @@
     #presence-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;overflow:hidden}
     .empty-presence{text-align:center;padding:24px 0;color:var(--text3);font-size:.85rem}
     #presence-container{position:relative;width:100%;max-width:600px;margin:0 auto;min-height:250px}
-    /* masa SVG'si mobilde taşmasın */
     #presence-container svg{display:block;width:100%;height:auto}
 
     .activity-item{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;flex-wrap:wrap;transition:border-color .2s}
@@ -238,7 +237,7 @@
         <div class="text-sm mt-2" id="goal-status-text">Bugün henüz çalışma kaydı yok.</div>
       </div>
 
-      <!-- ŞU AN ÇALIŞANLAR (ANİMASYONLU MASAÜSTÜ - DÜZELTİLMİŞ) -->
+      <!-- ŞU AN ÇALIŞANLAR (ANİMASYONLU MASAÜSTÜ - İSİMLER DÜZELTİLDİ) -->
       <div id="presence-section">
         <div class="card-title">👥 Şu An Çalışanlar <span id="online-count-badge" class="badge badge-green" style="margin-left:auto">0 kişi</span></div>
         <div id="presence-container">
@@ -321,11 +320,12 @@
   </main>
 </div>
 
-<!-- MODALS -->
+<!-- MODAL: PROFİL DÜZENLE (ŞİFRE DEĞİŞTİRME EKLENDİ) -->
 <div class="modal-overlay hidden" id="modal-username">
   <div class="modal-box">
     <div class="modal-title">Profili Düzenle</div>
     <div class="form-group"><label class="form-label">Kullanıcı Adı</label><input type="text" class="form-input" id="new-username-input" maxlength="30" /></div>
+    <div class="form-group"><label class="form-label">Yeni Şifre (İsteğe bağlı)</label><input type="password" class="form-input" id="new-password-input" placeholder="Değiştirmek istemiyorsanız boş bırakın" /></div>
     <div class="form-group"><label class="form-label">Karakterin (Emoji)</label>
       <div id="emoji-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
     </div>
@@ -335,6 +335,8 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL: HEDEF -->
 <div class="modal-overlay hidden" id="modal-goal">
   <div class="modal-box">
     <div class="modal-title">Günlük Hedef</div>
@@ -364,7 +366,7 @@
   const db = firebase.firestore();
   const rtdb = firebase.database();
 
-  // ══════════ GLOBAL ══════════
+  // GLOBAL
   let currentUser = null, userProfile = null, activities = [], sessions = [];
   let runningTimers = {}, calendarEvents = [], calendarInterval = null;
   let weeklyChart = null, monthlyChart = null, lbPeriod = 'daily', lbRefreshTimer = null;
@@ -453,7 +455,7 @@
     rtdb.ref(`presence/${currentUser.uid}`).update({name:userProfile.displayName,avatar:userProfile.avatar}).catch(()=>{});
   }
 
-  // Presence (Animasyonlu masa - DÜZELTİLDİ)
+  // Presence
   function setupPresence(){
     const uid=currentUser.uid, presRef=rtdb.ref(`presence/${uid}`), connRef=rtdb.ref('.info/connected');
     const presenceData=()=>({
@@ -484,8 +486,6 @@
       return;
     }
     emptyEl.classList.add('hidden');
-
-    // Boyutlar büyütüldü, isim etiketi genişletildi
     const W=600, H=320, cx=W/2, cy=H/2+15, rx=220, ry=105;
     const display=users.slice(0,12), n=display.length;
     const chairs = display.map((u,i)=>{
@@ -523,11 +523,13 @@
     container.insertAdjacentHTML('beforeend', svg);
   }
 
-  // Sessions vb. aynı...
+  // Sessions
   function listenSessions(){ db.collection('sessions').where('userId','==',currentUser.uid).where('dateKey','==',dateKey()).onSnapshot(snap=>{ sessions=snap.docs.map(d=>({id:d.id,...d.data()})); updateGoalDisplay(); if($('tab-stats').offsetParent!==null) renderStats(); }); }
   async function addSession(minutes,note='',activityId=null){ if(!minutes||minutes<1)return; const now=new Date(); await db.collection('sessions').add({userId:currentUser.uid,userName:userProfile.displayName,minutes:parseInt(minutes),note,activityId,dateKey:dateKey(now),weekKey:weekKey(now),monthKey:monthKey(now),yearKey:yearKey(now),createdAt:firebase.firestore.FieldValue.serverTimestamp()}); updateLeaderboardCache(parseInt(minutes)); }
   async function updateLeaderboardCache(minutes){ const uid=currentUser.uid,name=userProfile.displayName,now=new Date(),lbRef=db.collection('leaderboard').doc(uid),snap=await lbRef.get(),data=snap.exists?snap.data():{}; await lbRef.set({userId:uid,userName:name,daily:(data.daily||0)+(dateKey(now)===(data.lastDailyKey||'')?minutes:minutes),weekly:(data.weekly||0)+(weekKey(now)===(data.lastWeeklyKey||'')?minutes:minutes),monthly:(data.monthly||0)+(monthKey(now)===(data.lastMonthKey||'')?minutes:minutes),yearly:(data.yearly||0)+(yearKey(now)===(data.lastYearKey||'')?minutes:minutes),lastDailyKey:dateKey(now),lastWeeklyKey:weekKey(now),lastMonthKey:monthKey(now),lastYearKey:yearKey(now),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); }
   function updateGoalDisplay(){ const total=sessions.reduce((s,sess)=>s+(sess.minutes||0),0); const goal=userProfile.dailyGoal||120; const pct=Math.min(100,Math.round(total/goal*100)); $('today-minutes').textContent=total; $('goal-minutes').textContent=goal; $('goal-pct').textContent=pct; $('goal-bar').style.width=pct+'%'; if(pct>=100){ $('goal-bar').classList.add('green'); $('goal-status-text').textContent='🎉 Günlük hedefe ulaştın!'; } else { $('goal-bar').classList.remove('green'); $('goal-status-text').textContent=`Hedefe ${formatMin(goal-total)} kaldı.`; } $('stat-today').textContent=total; }
+
+  // Activities
   function listenActivities(){ db.collection('users').doc(currentUser.uid).collection('activities').orderBy('createdAt','desc').onSnapshot(snap=>{ activities=snap.docs.map(d=>({id:d.id,...d.data()})); activities.forEach(a=>{ if(a.startTimestamp&&!runningTimers[a.id]) _attachLocalInterval(a.id,a.startTimestamp); }); renderActivities(); }); }
   function _attachLocalInterval(id,startTimestamp){ if(runningTimers[id])return; runningTimers[id]={startTimestamp,get elapsed(){return Math.floor((Date.now()-this.startTimestamp)/1000);},interval:setInterval(()=>{const el=$(`timer-${id}`);if(el){const sec=Math.floor((Date.now()-startTimestamp)/1000);el.textContent=formatTimer(sec);const act=activities.find(a=>a.id===id);if(act){const pb=document.querySelector(`#act-item-${id} .progress-bar`);if(pb)pb.style.width=Math.min(100,Math.round(sec/60/act.estimated*100))+'%';}}},1000)};}
   async function addActivity(){ const name=$('act-name').value.trim(),estimated=parseInt($('act-estimated').value),category=$('act-category').value; if(!name){toast('Ad giriniz.','error');return;} try{ await db.collection('users').doc(currentUser.uid).collection('activities').add({name,estimated,category,elapsed:0,startTimestamp:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); $('act-name').value='';$('act-estimated').value=''; toast('Eklendi!','success'); }catch(err){toast('Hata!','error');} }
@@ -553,16 +555,17 @@
   async function renderStats(){ const uid=currentUser.uid,now=new Date(); const[w,m,y]=await Promise.all([db.collection('sessions').where('userId','==',uid).where('weekKey','==',weekKey(now)).get(),db.collection('sessions').where('userId','==',uid).where('monthKey','==',monthKey(now)).get(),db.collection('sessions').where('userId','==',uid).where('yearKey','==',yearKey(now)).get()]); const sum=s=>s.docs.reduce((a,d)=>a+(d.data().minutes||0),0); $('stat-week').textContent=sum(w);$('stat-month').textContent=sum(m);$('stat-year').textContent=sum(y); const last7=[],labels7=[];for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);labels7.push(d.toLocaleDateString('tr-TR',{weekday:'short'}));const dk=dateKey(d);last7.push(w.docs.filter(d=>d.data().dateKey===dk).reduce((a,d)=>a+(d.data().minutes||0),0));} const last6m=[],labels6m=[];const mSessions=y.docs.map(d=>d.data());for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);labels6m.push(d.toLocaleDateString('tr-TR',{month:'short'}));const mk=monthKey(d);last6m.push(mSessions.filter(s=>s.monthKey===mk).reduce((a,d)=>a+(d.minutes||0),0));} if(weeklyChart)weeklyChart.destroy();weeklyChart=new Chart($('chart-weekly'),{type:'bar',data:{labels:labels7,datasets:[{label:'Dakika',data:last7,backgroundColor:labels7.map((_,i)=>i===6?'#6c63ff':'rgba(108,99,255,.35)'),borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}},y:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}}}}}); if(monthlyChart)monthlyChart.destroy();monthlyChart=new Chart($('chart-monthly'),{type:'line',data:{labels:labels6m,datasets:[{label:'Dakika',data:last6m,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.15)',tension:.4,fill:true,pointBackgroundColor:'#a78bfa'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}},y:{ticks:{color:'#9aa5c4'},grid:{color:'rgba(46,54,80,.5)'}}}}}); }
   async function loadLeaderboard(period){ lbPeriod=period; const list=$('leaderboard-list'); list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Yükleniyor…</div>'; const snap=await db.collection('leaderboard').orderBy(period,'desc').limit(20).get(); const rows=snap.docs.map(d=>({id:d.id,...d.data()})); if(!rows.length){list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz kayıt yok.</div>';return;} list.innerHTML=rows.map((row,i)=>{const r=i+1,rc=r===1?'gold':r===2?'silver':r===3?'bronze':'',rl=r===1?'🥇':r===2?'🥈':r===3?'🥉':r,isMe=row.userId===currentUser.uid,fmt=formatMinLong(row[period]||0);return`<div class="lb-row ${isMe?'me':''}"><div class="lb-rank ${rc}">${rl}</div><div class="lb-name">${row.userName||'Anonim'}${isMe?' <span class="badge badge-purple" style="font-size:.65rem">Sen</span>':''}</div><div class="lb-time"><span style="font-size:1rem">${fmt.main}</span> <span style="font-size:.7rem;color:var(--text3)">${fmt.sub}</span></div></div>`;}).join('');}
 
-  // UI & Navigation
+  // UI & Nav
   function renderUI(){ updateGoalDisplay(); updateActiveTimerCard(); }
   let _activeCardInterval=null;
   function updateActiveTimerCard(){ const card=$('active-timer-card'); const runningId=Object.keys(runningTimers)[0]; if(!runningId){card.classList.add('hidden');clearInterval(_activeCardInterval);_activeCardInterval=null;return;} const act=activities.find(a=>a.id===runningId); card.classList.remove('hidden');$('active-timer-name').textContent=act?act.name:'Etkinlik';$('active-timer-stop-btn').onclick=()=>stopTimer(runningId,true); const update=()=>{if(!runningTimers[runningId]){card.classList.add('hidden');clearInterval(_activeCardInterval);return;}$('active-timer-elapsed').textContent=formatTimer(Math.floor((Date.now()-runningTimers[runningId].startTimestamp)/1000));}; update(); clearInterval(_activeCardInterval); _activeCardInterval=setInterval(update,1000); }
   document.querySelectorAll('.nav-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.querySelectorAll('[id^="tab-"]').forEach(t=>t.classList.add('hidden'));$(`tab-${tab}`).classList.remove('hidden');if(tab==='calendar')startCalendarCountdown();else stopCalendarCountdown();if(tab==='stats')renderStats();if(tab==='leaderboard'){loadLeaderboard(lbPeriod);if(!lbRefreshTimer)lbRefreshTimer=setInterval(()=>loadLeaderboard(lbPeriod),60000);}else{clearInterval(lbRefreshTimer);lbRefreshTimer=null;}}));
   document.querySelectorAll('.lb-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.lb-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadLeaderboard(btn.dataset.period);}));
 
-  // Modals
+  // MODAL: PROFİL (ŞİFRE DEĞİŞTİRME DAHİL)
   $('user-badge-btn').addEventListener('click',()=>{
     $('new-username-input').value=userProfile.displayName||'';
+    $('new-password-input').value='';
     const picker=$('emoji-picker'); picker.innerHTML='';
     AVATAR_OPTIONS.forEach(emoji=>{
       const btn=document.createElement('button');
@@ -582,20 +585,38 @@
   $('modal-username-cancel').addEventListener('click',()=>$('modal-username').classList.add('hidden'));
   $('modal-username-save').addEventListener('click',async()=>{
     const name=$('new-username-input').value.trim();
+    const newPassword=$('new-password-input').value;
     if(!name){toast('İsim giriniz.','error');return;}
+
     const selectedBtn=document.querySelector('#emoji-picker button[data-selected="true"]');
     const avatar=selectedBtn?selectedBtn.textContent:userProfile.avatar;
+
     try{
+      // Şifre değiştir
+      if(newPassword){
+        if(newPassword.length<6){ toast('Şifre en az 6 karakter olmalı.','error'); return; }
+        await currentUser.updatePassword(newPassword);
+      }
+      // Profili güncelle (isim ve avatar)
       await saveUserProfile({displayName:name,avatar});
       $('modal-username').classList.add('hidden');
       toast('Profil güncellendi.','success');
-    }catch(err){toast('Güncellenemedi.','error');}
+    }catch(err){
+      console.error(err);
+      if(err.code==='auth/requires-recent-login'){
+        toast('Güvenlik nedeniyle çıkış yapıp tekrar giriş yapmalısınız.','error');
+      } else {
+        toast('Güncellenemedi: '+err.message,'error');
+      }
+    }
   });
+
+  // MODAL: HEDEF
   $('edit-goal-btn').addEventListener('click',()=>{$('new-goal-input').value=userProfile.dailyGoal||120;$('modal-goal').classList.remove('hidden');});
   $('modal-goal-cancel').addEventListener('click',()=>$('modal-goal').classList.add('hidden'));
   $('modal-goal-save').addEventListener('click',async()=>{const goal=parseInt($('new-goal-input').value);if(!goal||goal<10){toast('En az 10 dk.','error');return;}await saveUserProfile({dailyGoal:goal});$('modal-goal').classList.add('hidden');updateGoalDisplay();toast('Hedef güncellendi!','success');});
 
-  // Manual & Quick Pomodoro
+  // Manuel & Quick Pomodoro
   $('manual-add-btn').addEventListener('click',async()=>{const min=parseInt($('manual-minutes').value),note=$('manual-note').value.trim();if(!min||min<1){toast('Süre giriniz.','error');return;}await addSession(min,note);$('manual-minutes').value='';$('manual-note').value='';toast(`${min} dk kaydedildi!`,'success');});
   $('add-activity-btn').addEventListener('click',addActivity);
   $('add-calendar-btn').addEventListener('click',addCalendarEvent);
