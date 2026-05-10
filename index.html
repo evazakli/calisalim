@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║           GÜNLÜK ÇALIŞMA TAKİP UYGULAMASI — Firebase + Vanilla JS          ║
+║           GÜNLÜK ÇALIŞMA TAKİP UYGULAMASI — studyBuddy                     ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  KURULUM TALİMATLARI                                                        ║
 ║                                                                              ║
@@ -11,8 +11,7 @@
 ║     c) Proje oluşturulduktan sonra "Project Settings" açın                  ║
 ║                                                                              ║
 ║  2. Firebase Servislerini Aktif Edin                                        ║
-║     a) Authentication → Get started → Anonymous'u etkinleştirin             ║
-║        (isteğe bağlı: Google provider da ekleyin)                           ║
+║     a) Authentication → Get started → Email/Password'u etkinleştirin       ║
 ║     b) Firestore Database → Create database → "production mode"             ║
 ║        → Bölge seçin (europe-west1 önerilir)                               ║
 ║     c) Realtime Database → Create database → Bölge seçin → Test mode        ║
@@ -28,7 +27,8 @@
 ║     rules_version = '2';                                                    ║
 ║     service cloud.firestore {                                               ║
 ║       match /databases/{database}/documents {                               ║
-║         // Kullanıcı kendi profilini ve alt koleksiyonlarını (activities) okuyup yazabilir ║
+║         // Kullanıcı kendi profilini ve alt koleksiyonlarını (activities,   ║
+║         // calendarEvents) okuyup yazabilir                                 ║
 ║         match /users/{userId}/{document=**} {                               ║
 ║           allow read, write: if request.auth != null                        ║
 ║                               && request.auth.uid == userId;                ║
@@ -72,7 +72,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Çalışma Takip</title>
+  <title>studyBuddy</title>
 
   <!-- Google Fonts: Syne (display) + DM Sans (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -441,6 +441,60 @@ body {
 .activity-actions { display: flex; gap: 6px; }
 
 /* ═══════════════════════════════════════════
+   CALENDAR EVENTS
+═══════════════════════════════════════════ */
+.calendar-event-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+}
+.calendar-event-item:hover { border-color: var(--accent); }
+.calendar-event-item.overdue {
+  border-color: var(--danger);
+  background: rgba(248,113,113,.06);
+}
+.calendar-event-info { flex: 1; min-width: 0; }
+.calendar-event-title {
+  font-weight: 600;
+  font-size: .9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-event-date {
+  font-size: .76rem;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.calendar-event-note {
+  font-size: .76rem;
+  color: var(--text2);
+  margin-top: 2px;
+  font-style: italic;
+}
+.calendar-event-countdown {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent2);
+  min-width: 130px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.calendar-event-countdown.urgent {
+  color: var(--warning);
+}
+.calendar-event-countdown.overdue {
+  color: var(--danger);
+}
+
+/* ═══════════════════════════════════════════
    LEADERBOARD
 ═══════════════════════════════════════════ */
 .lb-tabs {
@@ -662,7 +716,7 @@ body {
 <!-- LOADING SCREEN -->
 <div id="loading-screen">
   <div class="spinner"></div>
-  <div style="font-family:var(--font-display);font-size:1rem;color:var(--text2);">Bağlanıyor…</div>
+  <div style="font-family:var(--font-display);font-size:1rem;color:var(--text2);">studyBuddy bağlanıyor…</div>
 </div>
 
 <!-- TOAST CONTAINER -->
@@ -671,7 +725,7 @@ body {
 <!-- AUTH SCREEN -->
 <div id="auth-screen" class="hidden">
   <div class="auth-box">
-    <div class="auth-logo">Fokus<span>.</span></div>
+    <div class="auth-logo">studyBuddy<span>.</span></div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login">Giriş Yap</button>
       <button class="auth-tab" id="tab-register">Kayıt Ol</button>
@@ -707,7 +761,7 @@ body {
 <div id="app" class="hidden">
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo">Fokus<span>.</span></div>
+    <div class="topbar-logo">studyBuddy<span>.</span></div>
     <div class="topbar-right">
       <button class="btn-icon" id="theme-toggle-btn" style="background:none;border:none;color:var(--text);cursor:pointer;" title="Tema Değiştir">
         <svg id="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
@@ -732,6 +786,10 @@ body {
     <button class="nav-tab" data-tab="activities">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Etkinlikler
+    </button>
+    <button class="nav-tab" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Takvim
     </button>
     <button class="nav-tab" data-tab="stats">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -874,6 +932,41 @@ body {
       </div>
     </div>
 
+    <!-- ═══════════ TAB: TAKVİM ═══════════ -->
+    <div id="tab-calendar" class="hidden">
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Yeni Takvim Etkinliği
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Etkinlik Adı</label>
+            <input type="text" class="form-input" id="cal-title" placeholder="Sınav, teslim tarihi..." />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Tarih & Saat</label>
+            <input type="datetime-local" class="form-input" id="cal-datetime" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Not (İsteğe bağlı)</label>
+          <input type="text" class="form-input" id="cal-note" placeholder="Kısa bir not..." />
+        </div>
+        <button class="btn btn-primary" id="add-calendar-btn">Etkinlik Ekle</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Yaklaşan Etkinlikler
+        </div>
+        <div id="calendar-events-list">
+          <div class="text-sm" style="text-align:center;padding:20px">Henüz etkinlik yok.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══════════ TAB: İSTATİSTİK ═══════════ -->
     <div id="tab-stats" class="hidden">
       <div class="stats-grid" id="stats-summary">
@@ -995,15 +1088,17 @@ const rtdb = firebase.database();
 /* ════════════════════════════════════════════
    GLOBAL DURUM
 ════════════════════════════════════════════ */
-let currentUser    = null;    // Firebase kullanıcısı
-let userProfile    = null;    // Firestore profil
-let activities     = [];      // Etkinlik listesi
-let sessions       = [];      // Bugünkü oturumlar
-let runningTimers  = {};      // { activityId: { interval, elapsed } }
-let weeklyChart    = null;
-let monthlyChart   = null;
-let lbPeriod       = 'daily';
-let lbRefreshTimer = null;
+let currentUser      = null;    // Firebase kullanıcısı
+let userProfile      = null;    // Firestore profil
+let activities       = [];      // Etkinlik listesi (pomodoro)
+let sessions         = [];      // Bugünkü oturumlar
+let runningTimers    = {};      // { activityId: { interval, elapsed } }
+let calendarEvents   = [];      // Takvim etkinlikleri
+let calendarInterval = null;    // Takvim geri sayım interval'i
+let weeklyChart      = null;
+let monthlyChart     = null;
+let lbPeriod         = 'daily';
+let lbRefreshTimer   = null;
 
 /* ════════════════════════════════════════════
    YARDIMcı FONKSİYONLAR
@@ -1163,6 +1258,7 @@ auth.onAuthStateChanged(async user => {
     setupPresence();
     listenSessions();
     listenActivities();
+    listenCalendarEvents();
     renderUI();
     $('auth-screen').classList.add('hidden');
     $('app').classList.remove('hidden');
@@ -1174,8 +1270,10 @@ auth.onAuthStateChanged(async user => {
     // Geçmiş verileri sıfırla (başka hesaba geçişte önceki veriler kalmasın)
     activities = [];
     sessions = [];
+    calendarEvents = [];
     if(presenceHeartbeat) clearInterval(presenceHeartbeat);
     if(lbRefreshTimer) clearInterval(lbRefreshTimer);
+    if(calendarInterval) clearInterval(calendarInterval);
   }
 });
 
@@ -1234,7 +1332,6 @@ function setupPresence() {
     presRef.onDisconnect().remove();
     presRef.set(presenceData()).catch(err => {
       console.warn('Presence yazılamadı:', err.message);
-      // databaseURL yanlış veya kural hatası — sadece UI'da uyar
       const badge = $('online-count-badge');
       if (badge) badge.textContent = 'RTDB hatası';
     });
@@ -1261,7 +1358,6 @@ function setupPresence() {
       if (val && val.lastSeen && (now - val.lastSeen) < 90000) {
         users.push(val);
       } else if (val && !val.lastSeen) {
-        // Eski format (lastSeen yok) — since'e bak
         if (val.since && (now - val.since) < 90000) users.push(val);
       }
     });
@@ -1272,7 +1368,6 @@ function setupPresence() {
     console.error('Presence dinleme hatası:', err);
     const badge = $('online-count-badge');
     if (badge) badge.textContent = 'Bağlanamadı';
-    // Presence olmadan devam et
     renderPresence([{ uid: currentUser.uid, name: userProfile.displayName, since: Date.now(), lastSeen: Date.now() }]);
   });
 }
@@ -1290,7 +1385,6 @@ function renderPresence(users) {
 
   emptyEl.classList.add('hidden');
 
-  // SVG masa animasyonu
   const W = 560, H = 260;
   const cx = W/2, cy = H/2 + 10;
   const rx = 180, ry = 90;
@@ -1319,7 +1413,6 @@ function renderPresence(users) {
   }).join('');
 
   const svg = `<svg id="desk-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
-    <!-- Masa -->
     <ellipse cx="${cx}" cy="${cy}" rx="145" ry="68" fill="var(--card2)" stroke="var(--border)" stroke-width="2"/>
     <text x="${cx}" y="${cy+4}" text-anchor="middle" dominant-baseline="central" fill="var(--text3)" font-size="11" font-family="'DM Sans',sans-serif">Çalışma Masası</text>
     ${chairs}
@@ -1332,7 +1425,6 @@ function renderPresence(users) {
   wrap.innerHTML = svg;
   container.appendChild(wrap.firstElementChild);
 
-  // Scroll notu
   if (users.length > 10) {
     let note = container.querySelector('.presence-note');
     if (!note) {
@@ -1423,20 +1515,11 @@ function updateGoalDisplay() {
     $('goal-status-text').textContent = kalan > 0 ? `Hedefe ${formatMin(kalan)} kaldı.` : 'Hedefe ulaştın!';
   }
 
-  // İstatistik sekmesi güncelle
   $('stat-today').textContent = total;
 }
 
 /* ════════════════════════════════════════════
-   ETKİNLİKLER
-   
-   Zamanlayıcı tasarımı:
-   - Firestore'da her etkinlikte `startTimestamp` (ms) ve `elapsed` (sn) tutulur.
-   - Başlatıldığında: startTimestamp = Date.now() - elapsed*1000 → Firestore'a yaz.
-   - Görüntüleme: currentElapsed = floor((Date.now() - startTimestamp) / 1000)
-   - Bu sayede sekme kapalıyken de süre doğru hesaplanır (sunucu zamanı değil
-     client zamanı kullanılır; yeterince hassas ve ücretsiz).
-   - Durdurulduğunda: elapsed = currentElapsed, startTimestamp = null → Firestore'a yaz.
+   ETKİNLİKLER (POMODORO SAYAÇLAR)
 ════════════════════════════════════════════ */
 function listenActivities() {
   db.collection('users').doc(currentUser.uid)
@@ -1444,10 +1527,8 @@ function listenActivities() {
     .orderBy('createdAt', 'desc')
     .onSnapshot(snap => {
       activities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Firestore'da hâlâ "çalışıyor" işaretli etkinlikleri local state ile senkronize et
       activities.forEach(act => {
         if (act.startTimestamp && !runningTimers[act.id]) {
-          // Farklı bir cihaz/sekme başlatmış olabilir — local interval kur
           _attachLocalInterval(act.id, act.startTimestamp);
         }
       });
@@ -1455,9 +1536,8 @@ function listenActivities() {
     });
 }
 
-// Sadece UI sayacı için local interval — kayıt mantığı ayrı
 function _attachLocalInterval(id, startTimestamp) {
-  if (runningTimers[id]) return; // Zaten var
+  if (runningTimers[id]) return;
   runningTimers[id] = {
     startTimestamp,
     get elapsed() { return Math.floor((Date.now() - this.startTimestamp) / 1000); },
@@ -1466,12 +1546,10 @@ function _attachLocalInterval(id, startTimestamp) {
       if (el) {
         const sec = Math.floor((Date.now() - startTimestamp) / 1000);
         el.textContent = formatTimer(sec);
-        // Progress bar güncelle
         const act = activities.find(a => a.id === id);
         if (act) {
           const pb = document.querySelector(`#act-item-${id} .progress-bar`);
           if (pb) pb.style.width = Math.min(100, Math.round(sec/60/act.estimated*100)) + '%';
-          // Kalan dk güncelle
           const meta2 = document.querySelector(`#act-item-${id} .activity-meta`);
           if (meta2) {
             const meta = CATEGORY_META[act.category] || CATEGORY_META.other;
@@ -1497,7 +1575,7 @@ async function addActivity() {
       .collection('activities').add({
         name, estimated, category,
         elapsed: 0,
-        startTimestamp: null, // null = durdu
+        startTimestamp: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -1521,7 +1599,6 @@ async function deleteActivity(id) {
   }
 }
 
-// elapsed = saniye cinsinden toplam geçen süre
 async function _saveActivityState(id, elapsed, startTimestamp) {
   await db.collection('users').doc(currentUser.uid)
     .collection('activities').doc(id).update({ elapsed, startTimestamp });
@@ -1537,7 +1614,6 @@ function renderActivities() {
   list.innerHTML = activities.map(act => {
     const meta    = CATEGORY_META[act.category] || CATEGORY_META.other;
     const isRun   = !!runningTimers[act.id];
-    // Gerçek geçen süre: çalışıyorsa Date.now() farkı, duruyorsa Firestore'daki elapsed
     const timerSec = isRun
       ? Math.floor((Date.now() - runningTimers[act.id].startTimestamp) / 1000)
       : (act.elapsed || 0);
@@ -1581,20 +1657,15 @@ async function startTimer(id) {
   const act = activities.find(a => a.id === id);
   if (!act) return;
 
-  // Önce diğer tüm çalışan zamanlayıcıları durdur (aynı anda tek timer)
   const othersRunning = Object.keys(runningTimers).filter(tid => tid !== id);
   for (const tid of othersRunning) {
     await stopTimer(tid, true);
   }
 
-  // startTimestamp: daha önce elapsed kadar ileri başlat
-  const prevElapsed   = act.elapsed || 0; // saniye
+  const prevElapsed   = act.elapsed || 0;
   const startTimestamp = Date.now() - prevElapsed * 1000;
 
-  // Firestore'a "çalışıyor" durumunu yaz
   await _saveActivityState(id, prevElapsed, startTimestamp);
-
-  // Local interval başlat
   _attachLocalInterval(id, startTimestamp);
   renderActivities();
   updateActiveTimerCard();
@@ -1608,7 +1679,6 @@ async function stopTimer(id, save = true) {
   const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
   delete runningTimers[id];
 
-  // Firestore'a "durdu" durumunu yaz
   await _saveActivityState(id, elapsed, null);
 
   if (save && elapsed > 0) {
@@ -1636,10 +1706,160 @@ async function resetTimer(id) {
 }
 
 /* ════════════════════════════════════════════
+   TAKVİM ETKİNLİKLERİ (CALENDAR EVENTS)
+════════════════════════════════════════════ */
+function listenCalendarEvents() {
+  db.collection('users').doc(currentUser.uid)
+    .collection('calendarEvents')
+    .orderBy('dateTime', 'asc')
+    .onSnapshot(snap => {
+      calendarEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderCalendarEvents();
+    });
+}
+
+function startCalendarCountdown() {
+  stopCalendarCountdown();
+  calendarInterval = setInterval(() => {
+    updateCalendarCountdowns();
+  }, 1000);
+}
+
+function stopCalendarCountdown() {
+  if (calendarInterval) {
+    clearInterval(calendarInterval);
+    calendarInterval = null;
+  }
+}
+
+function getTimeRemaining(dateTime) {
+  const now = Date.now();
+  const target = dateTime.toDate ? dateTime.toDate().getTime() : new Date(dateTime).getTime();
+  const diff = target - now;
+  if (diff <= 0) return { expired: true, text: 'Süresi doldu' };
+  const days    = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  return { expired: false, days, hours, minutes, seconds, diff };
+}
+
+function formatCountdown(rem) {
+  if (rem.expired) return 'Süresi doldu';
+  if (rem.days > 0) return `${rem.days}g ${rem.hours}s ${rem.minutes}dk`;
+  if (rem.hours > 0) return `${rem.hours}:${String(rem.minutes).padStart(2,'0')}:${String(rem.seconds).padStart(2,'0')}`;
+  return `${rem.minutes}:${String(rem.seconds).padStart(2,'0')}`;
+}
+
+function updateCalendarCountdowns() {
+  const items = document.querySelectorAll('.calendar-event-item');
+  items.forEach(item => {
+    const countdownEl = item.querySelector('.calendar-event-countdown');
+    if (!countdownEl) return;
+    const dateTimeStr = countdownEl.dataset.datetime;
+    if (!dateTimeStr) return;
+    const rem = getTimeRemaining(new Date(dateTimeStr));
+    countdownEl.textContent = formatCountdown(rem);
+    countdownEl.className = 'calendar-event-countdown';
+    if (rem.expired) {
+      countdownEl.classList.add('overdue');
+      item.classList.add('overdue');
+    } else if (rem.diff < 3600000) { // 1 saatten az
+      countdownEl.classList.add('urgent');
+    }
+  });
+}
+
+function renderCalendarEvents() {
+  const list = $('calendar-events-list');
+  if (!calendarEvents.length) {
+    list.innerHTML = '<div class="text-sm" style="text-align:center;padding:20px">Henüz etkinlik yok.</div>';
+    stopCalendarCountdown();
+    return;
+  }
+
+  const now = Date.now();
+
+  list.innerHTML = calendarEvents.map(ev => {
+    const dt     = ev.dateTime && ev.dateTime.toDate ? ev.dateTime.toDate() : new Date(ev.dateTime);
+    const isPast = dt.getTime() < now;
+    const rem    = getTimeRemaining(dt);
+    const formattedDate = dt.toLocaleDateString('tr-TR', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    let countdownClass = '';
+    if (rem.expired) countdownClass = 'overdue';
+    else if (rem.diff < 3600000) countdownClass = 'urgent';
+
+    return `<div class="calendar-event-item ${rem.expired ? 'overdue' : ''}">
+      <div class="calendar-event-info">
+        <div class="calendar-event-title">${ev.title || 'Etkinlik'}</div>
+        <div class="calendar-event-date">${formattedDate}</div>
+        ${ev.note ? `<div class="calendar-event-note">${ev.note}</div>` : ''}
+      </div>
+      <div class="calendar-event-countdown ${countdownClass}" data-datetime="${dt.toISOString()}">
+        ${formatCountdown(rem)}
+      </div>
+      <button class="btn btn-sm btn-secondary btn-icon" onclick="deleteCalendarEvent('${ev.id}')" title="Sil">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  // Canlı geri sayımı başlat
+  startCalendarCountdown();
+}
+
+async function addCalendarEvent() {
+  const title    = $('cal-title').value.trim();
+  const datetimeStr = $('cal-datetime').value;
+  const note     = $('cal-note').value.trim();
+
+  if (!title) { toast('Etkinlik adı giriniz.', 'error'); return; }
+  if (!datetimeStr) { toast('Tarih ve saat seçiniz.', 'error'); return; }
+
+  const dateObj = new Date(datetimeStr);
+  if (dateObj.getTime() < Date.now() - 60000) {
+    // Geçmiş tarih uyarısı (1 dk tolerans)
+    if (!confirm('Seçtiğiniz tarih geçmişte. Yine de eklemek istiyor musunuz?')) return;
+  }
+
+  try {
+    await db.collection('users').doc(currentUser.uid)
+      .collection('calendarEvents').add({
+        title,
+        dateTime: firebase.firestore.Timestamp.fromDate(dateObj),
+        note,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+    $('cal-title').value = '';
+    $('cal-datetime').value = '';
+    $('cal-note').value = '';
+    toast('Takvim etkinliği eklendi!', 'success');
+  } catch (err) {
+    console.error("Takvim etkinliği ekleme hatası:", err);
+    toast('Hata: Yetkiniz yok (Firebase Kurallarını güncelleyin)', 'error');
+  }
+}
+
+async function deleteCalendarEvent(id) {
+  try {
+    await db.collection('users').doc(currentUser.uid)
+      .collection('calendarEvents').doc(id).delete();
+    toast('Etkinlik silindi.', 'info');
+  } catch (err) {
+    console.error("Takvim etkinliği silme hatası:", err);
+    toast('Hata: Silinemedi.', 'error');
+  }
+}
+
+/* ════════════════════════════════════════════
    İSTATİSTİKLER
 ════════════════════════════════════════════ */
 async function renderStats() {
-  // Bu hafta, ay, yıl oturumlarını çek
   const uid = currentUser.uid;
   const now = new Date();
 
@@ -1655,7 +1875,6 @@ async function renderStats() {
   $('stat-month').textContent = sumMin(monthSnap);
   $('stat-year').textContent  = sumMin(yearSnap);
 
-  // Son 7 gün grafik
   const last7 = [];
   const labels7 = [];
   for (let i = 6; i >= 0; i--) {
@@ -1668,7 +1887,6 @@ async function renderStats() {
     last7.push(dayMin);
   }
 
-  // Son 6 ay grafik
   const last6m = [], labels6m = [];
   const monthSessions = yearSnap.docs.map(d => d.data());
   for (let i = 5; i >= 0; i--) {
@@ -1678,14 +1896,6 @@ async function renderStats() {
     const mMin = monthSessions.filter(s => s.monthKey === mk).reduce((s,d)=>s+(d.minutes||0),0);
     last6m.push(mMin);
   }
-
-  const chartColors = {
-    bg: '#1e2436',
-    accent: '#6c63ff',
-    accent2: '#a78bfa',
-    text2: '#9aa5c4',
-    border: '#2e3650'
-  };
 
   if (weeklyChart) weeklyChart.destroy();
   weeklyChart = new Chart($('chart-weekly'), {
@@ -1781,7 +1991,6 @@ function renderUI() {
   updateActiveTimerCard();
 }
 
-// Ana sayfadaki aktif sayaç widget'ını güncelle
 let _activeCardInterval = null;
 function updateActiveTimerCard() {
   const card = $('active-timer-card');
@@ -1809,12 +2018,11 @@ function updateActiveTimerCard() {
     }
     const sec = Math.floor((Date.now() - runningTimers[runningId].startTimestamp) / 1000);
     $('active-timer-elapsed').textContent = formatTimer(sec);
-    // Halka ilerleme (maks 2 saat = 7200sn)
     const ring = $('active-timer-ring');
     if (ring && act) {
       const maxSec = (act.estimated || 60) * 60;
       const pct    = Math.min(1, sec / maxSec);
-      const circ   = 2 * Math.PI * 20; // 125.66
+      const circ   = 2 * Math.PI * 20;
       ring.style.strokeDashoffset = circ * (1 - pct);
     }
   };
@@ -1832,6 +2040,14 @@ document.querySelectorAll('.nav-tab').forEach(btn => {
     const tab = btn.dataset.tab;
     document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
     $(`tab-${tab}`).classList.remove('hidden');
+    
+    // Takvim sekmesi açıldığında geri sayımı başlat, diğerlerinde durdur
+    if (tab === 'calendar') {
+      startCalendarCountdown();
+    } else {
+      stopCalendarCountdown();
+    }
+    
     if (tab === 'stats') renderStats();
     if (tab === 'leaderboard') {
       loadLeaderboard(lbPeriod);
@@ -1872,24 +2088,19 @@ $('modal-username-save').addEventListener('click', async () => {
   try {
     $('modal-username-save').textContent = 'Kaydediliyor...';
     
-    // Şifre değiştirme
     if (pass) {
       if (pass.length < 6) { toast('Şifre en az 6 haneli olmalı.', 'error'); return; }
       await currentUser.updatePassword(pass);
     }
     
-    // İsim değiştiyse dummy e-postayı da güncelle ki yeni nickle girebilsin
     if (name !== userProfile.displayName) {
       await currentUser.updateEmail(getDummyEmail(name));
     }
     
-    // Profil güncellemesi
     await saveUserProfile({ displayName: name });
     
-    // Presence güncelle
     rtdb.ref(`presence/${currentUser.uid}`).update({ name });
     
-    // Leaderboard güncelle (Eğer döküman varsa ismini günceller, yoksa boş oluşturmaz)
     db.collection('leaderboard').doc(currentUser.uid).set({ userName: name }, { merge: true });
 
     $('modal-username').classList.add('hidden');
@@ -1950,6 +2161,12 @@ $('manual-minutes').addEventListener('keyup', e => { if (e.key === 'Enter') $('m
 ════════════════════════════════════════════ */
 $('add-activity-btn').addEventListener('click', addActivity);
 $('act-name').addEventListener('keyup', e => { if (e.key === 'Enter') addActivity(); });
+
+/* ════════════════════════════════════════════
+   TAKVİM ETKİNLİK EKLE BUTONU
+════════════════════════════════════════════ */
+$('add-calendar-btn').addEventListener('click', addCalendarEvent);
+$('cal-title').addEventListener('keyup', e => { if (e.key === 'Enter') addCalendarEvent(); });
 
 /* ════════════════════════════════════════════
    OVERLAY KAPATMA (dış tıklama)
