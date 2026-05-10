@@ -33,7 +33,8 @@
     ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
     #app{display:flex;flex-direction:column;min-height:100vh}
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:56px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
-    .topbar-logo{font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:var(--accent2);letter-spacing:-0.5px;white-space:nowrap}
+    .topbar-logo{font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:var(--accent2);letter-spacing:-0.5px;white-space:nowrap;cursor:pointer;user-select:none}
+    .topbar-logo:hover{opacity:0.8}
     .topbar-logo span{color:var(--text3);font-weight:400}
     .topbar-right{display:flex;align-items:center;gap:8px}
     .user-badge{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 12px 4px 4px;font-size:.78rem;cursor:pointer;transition:border-color .2s}
@@ -104,7 +105,7 @@
     .lb-name{flex:1;font-size:.85rem;font-weight:500}
     .lb-time{font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--accent2)}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-    .modal-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:100%;max-width:400px;animation:slideUp .22s ease}
+    .modal-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;width:100%;max-width:440px;animation:slideUp .22s ease;max-height:90vh;overflow-y:auto}
     .modal-title{font-family:var(--font-display);font-size:1.1rem;font-weight:700;margin-bottom:16px}
     .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -129,6 +130,14 @@
     .auth-tab{flex:1;padding:10px;font-weight:600;cursor:pointer;border-radius:8px;background:var(--bg2);color:var(--text3);border:1px solid var(--border);transition:.2s;font-size:.82rem}
     .auth-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .auth-form{display:flex;flex-direction:column;gap:14px;text-align:left}
+
+    /* Kılavuz modal içerik stilleri */
+    .guide-section { margin-bottom: 16px; }
+    .guide-section h3 { font-family: var(--font-display); font-size: 1rem; color: var(--accent2); margin-bottom: 8px; }
+    .guide-section p, .guide-section li { font-size: .85rem; color: var(--text2); line-height: 1.5; }
+    .guide-section ul { list-style: none; padding-left: 0; }
+    .guide-section ul li:before { content: "✦"; color: var(--accent); margin-right: 8px; }
+
     @media (max-width:480px){.main{padding:12px}.topbar{padding:0 10px;height:50px}.topbar-logo{font-size:1rem}.user-badge{padding:2px 10px 2px 2px;font-size:.72rem}.stat-card{padding:12px}.stat-card-value{font-size:1.4rem}.activity-actions .btn{padding:4px 8px;font-size:.7rem}.calendar-event-countdown{min-width:80px;font-size:.8rem}.btn{padding:6px 12px;font-size:.78rem}.form-row{grid-template-columns:1fr}}
   </style>
 </head>
@@ -165,7 +174,7 @@
 <!-- APP -->
 <div id="app" class="hidden">
   <header class="topbar">
-    <div class="topbar-logo">studyBuddy<span>.</span></div>
+    <div class="topbar-logo" id="logo-btn" title="Kullanım Kılavuzu">studyBuddy<span>.</span></div>
     <div class="topbar-right">
       <button class="btn-icon" id="theme-toggle-btn" style="background:none;border:none;color:var(--text);cursor:pointer;" title="Tema Değiştir">
         <svg id="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
@@ -212,7 +221,6 @@
         </div>
       </div>
 
-      <!-- Hızlı Pomodoro -->
       <div class="card">
         <div class="card-title"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Hızlı Pomodoro Başlat</div>
         <div class="form-row">
@@ -222,7 +230,6 @@
         <button class="btn btn-primary" id="start-quick-pomodoro-btn" style="margin-top:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Başlat</button>
       </div>
 
-      <!-- Günlük Hedef -->
       <div class="card">
         <div class="card-title">🎯 Günlük Hedef</div>
         <div class="flex items-center gap-2" style="margin-bottom:8px;flex-wrap:wrap">
@@ -237,7 +244,6 @@
         <div class="text-sm mt-2" id="goal-status-text">Bugün henüz çalışma kaydı yok.</div>
       </div>
 
-      <!-- ŞU AN ÇALIŞANLAR -->
       <div id="presence-section">
         <div class="card-title">👥 Şu An Çalışanlar <span id="online-count-badge" class="badge badge-green" style="margin-left:auto">0 kişi</span></div>
         <div id="presence-container">
@@ -320,7 +326,50 @@
   </main>
 </div>
 
-<!-- MODALS -->
+<!-- MODAL: TANITIM / KULLANIM KILAVUZU -->
+<div class="modal-overlay hidden" id="modal-guide">
+  <div class="modal-box">
+    <div class="modal-title">📘 studyBuddy Kullanım Kılavuzu</div>
+    <div class="guide-section">
+      <h3>🚀 Hızlı Başlangıç</h3>
+      <p>studyBuddy, çalışma sürelerinizi takip etmenizi, arkadaşlarınızla birlikte motive olmanızı ve önemli tarihleri kaçırmamanızı sağlar.</p>
+    </div>
+    <div class="guide-section">
+      <h3>⏱️ Hızlı Pomodoro</h3>
+      <p>Ana sayfada istediğiniz süreyi girip hemen sayacı başlatabilirsiniz. Çalışırken sayaç ilerler, durdurduğunuzda süre günlük hedefinize eklenir.</p>
+    </div>
+    <div class="guide-section">
+      <h3>📋 Etkinlikler</h3>
+      <ul>
+        <li>Yeni etkinlik oluşturup tahmini süre ve kategori belirleyin.</li>
+        <li>Başlat/Durdur butonlarıyla süre tutun.</li>
+        <li>Çöp kutusuyla etkinliği silin, ↺ ile sıfırlayın.</li>
+        <li>Manuel çalışma süresi ekleyerek geçmiş kayıt oluşturabilirsiniz.</li>
+      </ul>
+    </div>
+    <div class="guide-section">
+      <h3>📅 Takvim</h3>
+      <p>Sınav ya da teslim tarihi gibi etkinlikleri ekleyin. Her etkinlik için kalan süreyi canlı olarak görün. Süresi geçenler kırmızı, yaklaşanlar turuncu olur.</p>
+    </div>
+    <div class="guide-section">
+      <h3>👥 Masaüstü</h3>
+      <p>Şu anda çalışan herkes masada birer karakter olarak görünür. Profilinizden kendi emojinizi seçebilirsiniz.</p>
+    </div>
+    <div class="guide-section">
+      <h3>🏆 Sıralama</h3>
+      <p>Günlük, haftalık, aylık ve yıllık liderlik tablosuyla rekabet edin.</p>
+    </div>
+    <div class="guide-section">
+      <h3>🎨 Profil</h3>
+      <p>Sağ üstteki rozete tıklayarak adınızı, şifrenizi ve karakter emojinizi değiştirebilirsiniz.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="modal-guide-close">Anladım</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PROFİL DÜZENLE -->
 <div class="modal-overlay hidden" id="modal-username">
   <div class="modal-box">
     <div class="modal-title">Profili Düzenle</div>
@@ -336,6 +385,7 @@
   </div>
 </div>
 
+<!-- MODAL: HEDEF -->
 <div class="modal-overlay hidden" id="modal-goal">
   <div class="modal-box">
     <div class="modal-title">Günlük Hedef</div>
@@ -348,7 +398,7 @@
 </div>
 
 <script>
-  // ══════════ FIREBASE CONFIG (KENDİ BİLGİLERİNİZİ GİRİN) ══════════
+  /* ══════════ FIREBASE CONFIG (KENDİ BİLGİLERİNİZİ GİRİN) ══════════ */
   const firebaseConfig = {
     apiKey: "AIzaSyDCuodwSDZ_7ExK8hT6cTTV68ANs7OCLc4",
     authDomain: "calisalim.firebaseapp.com",
@@ -373,7 +423,6 @@
 
   const AVATAR_OPTIONS = ["👨‍💻","👩‍💻","🧑‍🎓","👩‍🔬","🧑‍💼","👨‍🎨","🧑‍🍳","🦸","🧙","👩‍🚀","🧑‍🏫","👨‍🔧","👩‍🎤","🧑‍🌾","👨‍🚒","🕵️","💂","👷","🤴","👸"];
 
-  // Yardımcılar
   const $ = id => document.getElementById(id);
   function toast(msg, type='info') {
     const el = document.createElement('div');
@@ -522,13 +571,12 @@
     container.insertAdjacentHTML('beforeend', svg);
   }
 
-  // Sessions
+  // Sessions, Goal, Activities, Calendar... (öncekiyle aynı, kısaltıyorum)
   function listenSessions(){ db.collection('sessions').where('userId','==',currentUser.uid).where('dateKey','==',dateKey()).onSnapshot(snap=>{ sessions=snap.docs.map(d=>({id:d.id,...d.data()})); updateGoalDisplay(); if($('tab-stats').offsetParent!==null) renderStats(); }); }
   async function addSession(minutes,note='',activityId=null){ if(!minutes||minutes<1)return; const now=new Date(); await db.collection('sessions').add({userId:currentUser.uid,userName:userProfile.displayName,minutes:parseInt(minutes),note,activityId,dateKey:dateKey(now),weekKey:weekKey(now),monthKey:monthKey(now),yearKey:yearKey(now),createdAt:firebase.firestore.FieldValue.serverTimestamp()}); updateLeaderboardCache(parseInt(minutes)); }
   async function updateLeaderboardCache(minutes){ const uid=currentUser.uid,name=userProfile.displayName,now=new Date(),lbRef=db.collection('leaderboard').doc(uid),snap=await lbRef.get(),data=snap.exists?snap.data():{}; await lbRef.set({userId:uid,userName:name,daily:(data.daily||0)+(dateKey(now)===(data.lastDailyKey||'')?minutes:minutes),weekly:(data.weekly||0)+(weekKey(now)===(data.lastWeeklyKey||'')?minutes:minutes),monthly:(data.monthly||0)+(monthKey(now)===(data.lastMonthKey||'')?minutes:minutes),yearly:(data.yearly||0)+(yearKey(now)===(data.lastYearKey||'')?minutes:minutes),lastDailyKey:dateKey(now),lastWeeklyKey:weekKey(now),lastMonthKey:monthKey(now),lastYearKey:yearKey(now),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); }
   function updateGoalDisplay(){ const total=sessions.reduce((s,sess)=>s+(sess.minutes||0),0); const goal=userProfile.dailyGoal||120; const pct=Math.min(100,Math.round(total/goal*100)); $('today-minutes').textContent=total; $('goal-minutes').textContent=goal; $('goal-pct').textContent=pct; $('goal-bar').style.width=pct+'%'; if(pct>=100){ $('goal-bar').classList.add('green'); $('goal-status-text').textContent='🎉 Günlük hedefe ulaştın!'; } else { $('goal-bar').classList.remove('green'); $('goal-status-text').textContent=`Hedefe ${formatMin(goal-total)} kaldı.`; } $('stat-today').textContent=total; }
 
-  // Activities
   function listenActivities(){ db.collection('users').doc(currentUser.uid).collection('activities').orderBy('createdAt','desc').onSnapshot(snap=>{ activities=snap.docs.map(d=>({id:d.id,...d.data()})); activities.forEach(a=>{ if(a.startTimestamp&&!runningTimers[a.id]) _attachLocalInterval(a.id,a.startTimestamp); }); renderActivities(); }); }
   function _attachLocalInterval(id, startTimestamp){
     if(runningTimers[id]) clearInterval(runningTimers[id].interval);
@@ -555,7 +603,6 @@
   function toggleTimer(id){ if(runningTimers[id]) stopTimer(id,true); else startTimer(id); }
 
   async function startTimer(id){
-    // Varsa diğer timer'ları durdur
     for(const tid of Object.keys(runningTimers).filter(t=>t!==id)) await stopTimer(tid, true);
     const act = activities.find(a => a.id === id);
     if(!act) return;
@@ -573,11 +620,9 @@
     const { startTimestamp, prevElapsed, interval } = runningTimers[id];
     clearInterval(interval);
     const totalElapsed = Math.floor((Date.now() - startTimestamp) / 1000);
-    const sessionElapsed = totalElapsed - prevElapsed; // bu oturumdaki süre
+    const sessionElapsed = totalElapsed - prevElapsed;
     delete runningTimers[id];
-
     await _saveActivityState(id, totalElapsed, null);
-
     if(save && sessionElapsed > 0){
       const min = Math.floor(sessionElapsed / 60);
       if(min > 0){
@@ -641,6 +686,18 @@
   function updateActiveTimerCard(){ const card=$('active-timer-card'); const runningId=Object.keys(runningTimers)[0]; if(!runningId){card.classList.add('hidden');clearInterval(_activeCardInterval);_activeCardInterval=null;return;} const act=activities.find(a=>a.id===runningId); card.classList.remove('hidden');$('active-timer-name').textContent=act?act.name:'Etkinlik';$('active-timer-stop-btn').onclick=()=>stopTimer(runningId,true); const update=()=>{if(!runningTimers[runningId]){card.classList.add('hidden');clearInterval(_activeCardInterval);return;}$('active-timer-elapsed').textContent=formatTimer(Math.floor((Date.now()-runningTimers[runningId].startTimestamp)/1000));}; update(); clearInterval(_activeCardInterval); _activeCardInterval=setInterval(update,1000); }
   document.querySelectorAll('.nav-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.querySelectorAll('[id^="tab-"]').forEach(t=>t.classList.add('hidden'));$(`tab-${tab}`).classList.remove('hidden');if(tab==='calendar')startCalendarCountdown();else stopCalendarCountdown();if(tab==='stats')renderStats();if(tab==='leaderboard'){loadLeaderboard(lbPeriod);if(!lbRefreshTimer)lbRefreshTimer=setInterval(()=>loadLeaderboard(lbPeriod),60000);}else{clearInterval(lbRefreshTimer);lbRefreshTimer=null;}}));
   document.querySelectorAll('.lb-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.lb-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadLeaderboard(btn.dataset.period);}));
+
+  // --- LOGOYA TIKLAMA: KILAVUZ MODALI ---
+  $('logo-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('modal-guide').classList.remove('hidden');
+  });
+  $('modal-guide-close').addEventListener('click', () => {
+    $('modal-guide').classList.add('hidden');
+  });
+  $('modal-guide').addEventListener('click', (e) => {
+    if (e.target === $('modal-guide')) $('modal-guide').classList.add('hidden');
+  });
 
   // Modals
   $('user-badge-btn').addEventListener('click',()=>{
@@ -707,7 +764,6 @@
           elapsed: 0, startTimestamp: null,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-      // Geçici olarak activities dizisine ekleyelim ki startTimer bulabilsin
       activities.push({
         id: docRef.id,
         name, estimated: minutes, category: 'other',
@@ -723,7 +779,7 @@
   }
   $('start-quick-pomodoro-btn').addEventListener('click', startQuickPomodoro);
 
-  ['modal-username','modal-goal'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).classList.add('hidden');}));
+  ['modal-username','modal-goal','modal-guide'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).classList.add('hidden');}));
 </script>
 </body>
 </html>
