@@ -548,7 +548,7 @@
   async function addCalendarEvent(){ const title=$('cal-title').value.trim(),dtStr=$('cal-datetime').value,note=$('cal-note').value.trim(); if(!title||!dtStr){toast('Ad ve tarih giriniz.','error');return;} try{ await db.collection('users').doc(currentUser.uid).collection('calendarEvents').add({title,dateTime:firebase.firestore.Timestamp.fromDate(new Date(dtStr)),note,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); $('cal-title').value='';$('cal-datetime').value='';$('cal-note').value=''; toast('Eklendi!','success'); }catch(err){toast('Hata!','error');} }
   async function deleteCalendarEvent(id){ try{ await db.collection('users').doc(currentUser.uid).collection('calendarEvents').doc(id).delete(); }catch(err){toast('Silinemedi.','error');} }
 
-  // HISTORY (Çalışmalarım)
+  // HISTORY (Çalışmalarım) - DÜZELTİLDİ
   async function loadHistory(period = historyPeriod){
     historyPeriod = period;
     const list = $('#history-list');
@@ -558,27 +558,53 @@
     if (period === 'week') { startDate = new Date(now); startDate.setDate(now.getDate() - 7); }
     else if (period === 'month') { startDate = new Date(now); startDate.setMonth(now.getMonth() - 1); }
     try {
-      const snap = await db.collection('sessions').where('userId','==',currentUser.uid).orderBy('createdAt','desc').limit(500).get();
-      let allSessions = snap.docs.map(d=>({id:d.id,...d.data()}));
-      if (startDate) allSessions = allSessions.filter(s=>s.createdAt&&s.createdAt.toDate()>=startDate);
-      if (!allSessions.length) { list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Bu dönemde kayıt yok.</div>'; return; }
+      const snap = await db.collection('sessions')
+          .where('userId', '==', currentUser.uid)
+          .get();
+      let allSessions = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(s => s.createdAt)
+          .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+      if (startDate) allSessions = allSessions.filter(s => s.createdAt.toDate() >= startDate);
+      allSessions = allSessions.slice(0, 500);
+      if (!allSessions.length) {
+        list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Bu dönemde kayıt yok.</div>';
+        return;
+      }
       const grouped = {};
-      allSessions.forEach(s=>{
-        const d = s.createdAt ? s.createdAt.toDate() : new Date();
-        const key = d.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-        if (!grouped[key]) grouped[key] = {sessions:[],total:0};
-        grouped[key].sessions.push({time:d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}),note:s.note||'Çalışma',minutes:s.minutes});
+      allSessions.forEach(s => {
+        const d = s.createdAt.toDate();
+        const key = d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        if (!grouped[key]) grouped[key] = { sessions: [], total: 0 };
+        grouped[key].sessions.push({
+          time: d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          note: s.note || 'Çalışma',
+          minutes: s.minutes
+        });
         grouped[key].total += s.minutes;
       });
       let html = '';
-      Object.keys(grouped).forEach(dateStr=>{
+      Object.keys(grouped).forEach(dateStr => {
         const day = grouped[dateStr];
-        html += `<div class="history-day-card"><div class="history-day-header"><span class="history-day-title">${dateStr}</span><span class="history-day-total">Toplam: ${formatMin(day.total)}</span></div>`;
-        day.sessions.forEach(s=>html+=`<div class="history-item"><span class="history-time">${s.time}</span><span class="history-note">${s.note}</span><span class="history-minutes">${s.minutes} dk</span></div>`);
+        html += `<div class="history-day-card">
+          <div class="history-day-header">
+            <span class="history-day-title">${dateStr}</span>
+            <span class="history-day-total">Toplam: ${formatMin(day.total)}</span>
+          </div>`;
+        day.sessions.forEach(s => {
+          html += `<div class="history-item">
+            <span class="history-time">${s.time}</span>
+            <span class="history-note">${s.note}</span>
+            <span class="history-minutes">${s.minutes} dk</span>
+          </div>`;
+        });
         html += `</div>`;
       });
       list.innerHTML = html;
-    } catch(err){ console.error(err); list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Yüklenirken hata oluştu.</div>'; }
+    } catch (err) {
+      console.error('History yüklenirken hata:', err);
+      list.innerHTML = '<div class="text-sm" style="text-align:center;padding:16px">Yüklenirken hata oluştu.</div>';
+    }
   }
 
   // STATS, LEADERBOARD
