@@ -193,7 +193,16 @@
 
 <script>
   // Firebase config...
-  const firebaseConfig = { /* ... */ };
+  const firebaseConfig = {
+  apiKey: "AIzaSyDCuodwSDZ_7ExK8hT6cTTV68ANs7OCLc4",
+  authDomain: "calisalim.firebaseapp.com",
+  databaseURL: "https://calisalim-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "calisalim",
+  storageBucket: "calisalim.firebasestorage.app",
+  messagingSenderId: "529858486083",
+  appId: "1:529858486083:web:a169a0259c544ede1599f6",
+  measurementId: "G-7JQD2XZ2ND"
+  };
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
