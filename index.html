@@ -113,19 +113,17 @@
   --font-body: 'DM Sans', sans-serif;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f0f2fa;
-    --bg2: #e8ebf6;
-    --bg3: #dde1f0;
-    --card: #ffffff;
-    --card2: #f5f7ff;
-    --border: #d0d5ea;
-    --text: #1a1f35;
-    --text2: #4a5380;
-    --text3: #8892b0;
-    --shadow: 0 4px 24px rgba(0,0,0,.10);
-  }
+html[data-theme="light"] {
+  --bg: #f0f2fa;
+  --bg2: #e8ebf6;
+  --bg3: #dde1f0;
+  --card: #ffffff;
+  --card2: #f5f7ff;
+  --border: #d0d5ea;
+  --text: #1a1f35;
+  --text2: #4a5380;
+  --text3: #8892b0;
+  --shadow: 0 4px 24px rgba(0,0,0,.10);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -620,6 +618,43 @@ body {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.4); opacity: .6; }
 }
+/* ═══════════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════════ */
+#auth-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.auth-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.auth-logo {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent2);
+  margin-bottom: 24px;
+  letter-spacing: -1px;
+}
+.auth-logo span { color: var(--text3); font-weight: 400; }
+.auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.auth-tab { flex: 1; padding: 10px; font-weight: 600; cursor: pointer; border-radius: 8px; background: var(--bg2); color: var(--text3); border: 1px solid var(--border); transition: .2s; }
+.auth-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
+
 </style>
 </head>
 <body>
@@ -633,16 +668,58 @@ body {
 <!-- TOAST CONTAINER -->
 <div id="toast-container"></div>
 
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="hidden">
+  <div class="auth-box">
+    <div class="auth-logo">Fokus<span>.</span></div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login">Giriş Yap</button>
+      <button class="auth-tab" id="tab-register">Kayıt Ol</button>
+    </div>
+    
+    <div class="auth-form" id="form-login">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Kullanıcı Adı (Nick)</label>
+        <input type="text" class="form-input" id="auth-login-nick" placeholder="Kullanıcı adınız..." />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Şifre</label>
+        <input type="password" class="form-input" id="auth-login-pass" placeholder="Şifreniz..." />
+      </div>
+      <button class="btn btn-primary" style="justify-content:center" id="btn-do-login">Giriş Yap</button>
+    </div>
+
+    <div class="auth-form hidden" id="form-register">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Kullanıcı Adı (Nick)</label>
+        <input type="text" class="form-input" id="auth-reg-nick" placeholder="Bir nick seçin..." />
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Şifre</label>
+        <input type="password" class="form-input" id="auth-reg-pass" placeholder="En az 6 karakter..." />
+      </div>
+      <button class="btn btn-primary" style="justify-content:center" id="btn-do-register">Kayıt Ol</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" class="hidden">
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-logo">Fokus<span>.</span></div>
     <div class="topbar-right">
-      <div class="user-badge" id="user-badge-btn" title="Kullanıcı adını değiştir">
+      <button class="btn-icon" id="theme-toggle-btn" style="background:none;border:none;color:var(--text);cursor:pointer;" title="Tema Değiştir">
+        <svg id="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg id="icon-sun" class="hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <div class="user-badge" id="user-badge-btn" title="Profili düzenle">
         <div class="user-avatar" id="user-avatar-text">?</div>
         <span id="user-display-name">Yükleniyor…</span>
       </div>
+      <button class="btn btn-secondary btn-sm" id="btn-logout" title="Çıkış Yap">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
     </div>
   </header>
 
@@ -856,13 +933,17 @@ body {
   </main>
 </div>
 
-<!-- MODAL: KULLANICI ADI DEĞİŞTİR -->
+<!-- MODAL: PROFİL DÜZENLE -->
 <div class="modal-overlay hidden" id="modal-username">
   <div class="modal-box">
-    <div class="modal-title">Kullanıcı Adını Değiştir</div>
+    <div class="modal-title">Profili Düzenle</div>
     <div class="form-group">
-      <label class="form-label">Yeni Kullanıcı Adı</label>
+      <label class="form-label">Kullanıcı Adı (Nick)</label>
       <input type="text" class="form-input" id="new-username-input" maxlength="30" placeholder="Bir isim seçin…" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Yeni Şifre (İsteğe bağlı)</label>
+      <input type="password" class="form-input" id="new-password-input" placeholder="Değiştirmek istemiyorsanız boş bırakın" />
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="modal-username-cancel">İptal</button>
@@ -996,9 +1077,86 @@ const CATEGORY_META = {
 };
 
 /* ════════════════════════════════════════════
-   KIMLIK DOĞRULAMA
+   KIMLIK DOĞRULAMA & TEMA
 ════════════════════════════════════════════ */
+// Tema Ayarı
+let currentTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', currentTheme);
+if (currentTheme === 'light') {
+  $('icon-moon').classList.add('hidden');
+  $('icon-sun').classList.remove('hidden');
+}
+$('theme-toggle-btn').addEventListener('click', () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  localStorage.setItem('theme', currentTheme);
+  $('icon-moon').classList.toggle('hidden');
+  $('icon-sun').classList.toggle('hidden');
+});
+
+// Auth Tabs
+$('tab-login').addEventListener('click', () => {
+  $('tab-login').classList.add('active'); $('tab-register').classList.remove('active');
+  $('form-login').classList.remove('hidden'); $('form-register').classList.add('hidden');
+});
+$('tab-register').addEventListener('click', () => {
+  $('tab-register').classList.add('active'); $('tab-login').classList.remove('active');
+  $('form-register').classList.remove('hidden'); $('form-login').classList.add('hidden');
+});
+
+function getDummyEmail(nick) {
+  // Basitçe boşlukları atıp küçük harfe çevirerek dummy email oluşturur
+  return nick.toLowerCase().replace(/[^a-z0-9]/g, '') + '@calisalim.local';
+}
+
+// Giriş Yap
+$('btn-do-login').addEventListener('click', async () => {
+  const nick = $('auth-login-nick').value.trim();
+  const pass = $('auth-login-pass').value;
+  if (!nick || !pass) { toast('Nick ve şifre giriniz', 'error'); return; }
+  try {
+    $('btn-do-login').textContent = 'Bekleyin...';
+    await auth.signInWithEmailAndPassword(getDummyEmail(nick), pass);
+  } catch (err) {
+    console.error(err);
+    toast('Giriş başarısız. Nick veya şifre hatalı.', 'error');
+  } finally {
+    $('btn-do-login').textContent = 'Giriş Yap';
+  }
+});
+
+// Kayıt Ol
+$('btn-do-register').addEventListener('click', async () => {
+  const nick = $('auth-reg-nick').value.trim();
+  const pass = $('auth-reg-pass').value;
+  if (!nick || pass.length < 6) { toast('Nick ve en az 6 haneli şifre giriniz', 'error'); return; }
+  try {
+    $('btn-do-register').textContent = 'Bekleyin...';
+    const cred = await auth.createUserWithEmailAndPassword(getDummyEmail(nick), pass);
+    // İlk girişte profili hemen oluştur ki Nick doğru kaydolsun
+    await db.collection('users').doc(cred.user.uid).set({
+      displayName: nick,
+      dailyGoal: 120,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'auth/email-already-in-use') toast('Bu nick zaten alınmış.', 'error');
+    else toast('Kayıt başarısız.', 'error');
+  } finally {
+    $('btn-do-register').textContent = 'Kayıt Ol';
+  }
+});
+
+// Çıkış Yap
+$('btn-logout').addEventListener('click', () => {
+  if(confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+    auth.signOut();
+  }
+});
+
 auth.onAuthStateChanged(async user => {
+  $('loading-screen').classList.add('hidden');
   if (user) {
     currentUser = user;
     await loadUserProfile();
@@ -1006,15 +1164,18 @@ auth.onAuthStateChanged(async user => {
     listenSessions();
     listenActivities();
     renderUI();
-    $('loading-screen').classList.add('hidden');
+    $('auth-screen').classList.add('hidden');
     $('app').classList.remove('hidden');
   } else {
-    // Anonim giriş
-    try {
-      await auth.signInAnonymously();
-    } catch (e) {
-      $('loading-screen').innerHTML = `<p style="color:var(--danger);padding:20px;text-align:center">Firebase bağlantısı başarısız. Lütfen firebaseConfig ayarlarını kontrol edin.<br><small>${e.message}</small></p>`;
-    }
+    // Oturum yoksa temizle ve Auth ekranını göster
+    $('app').classList.add('hidden');
+    $('auth-screen').classList.remove('hidden');
+    
+    // Geçmiş verileri sıfırla (başka hesaba geçişte önceki veriler kalmasın)
+    activities = [];
+    sessions = [];
+    if(presenceHeartbeat) clearInterval(presenceHeartbeat);
+    if(lbRefreshTimer) clearInterval(lbRefreshTimer);
   }
 });
 
@@ -1694,22 +1855,57 @@ document.querySelectorAll('.lb-tab').forEach(btn => {
 });
 
 /* ════════════════════════════════════════════
-   MODAL: KULLANICI ADI
+   MODAL: PROFİL
 ════════════════════════════════════════════ */
 $('user-badge-btn').addEventListener('click', () => {
   $('new-username-input').value = userProfile.displayName || '';
+  $('new-password-input').value = '';
   $('modal-username').classList.remove('hidden');
   setTimeout(() => $('new-username-input').focus(), 50);
 });
 $('modal-username-cancel').addEventListener('click', () => $('modal-username').classList.add('hidden'));
 $('modal-username-save').addEventListener('click', async () => {
   const name = $('new-username-input').value.trim();
+  const pass = $('new-password-input').value;
   if (!name) { toast('Geçerli bir isim giriniz.', 'error'); return; }
-  await saveUserProfile({ displayName: name });
-  // Presence güncelle
-  rtdb.ref(`presence/${currentUser.uid}`).update({ name });
-  $('modal-username').classList.add('hidden');
-  toast('İsim güncellendi!', 'success');
+  
+  try {
+    $('modal-username-save').textContent = 'Kaydediliyor...';
+    
+    // Şifre değiştirme
+    if (pass) {
+      if (pass.length < 6) { toast('Şifre en az 6 haneli olmalı.', 'error'); return; }
+      await currentUser.updatePassword(pass);
+    }
+    
+    // İsim değiştiyse dummy e-postayı da güncelle ki yeni nickle girebilsin
+    if (name !== userProfile.displayName) {
+      await currentUser.updateEmail(getDummyEmail(name));
+    }
+    
+    // Profil güncellemesi
+    await saveUserProfile({ displayName: name });
+    
+    // Presence güncelle
+    rtdb.ref(`presence/${currentUser.uid}`).update({ name });
+    
+    // Leaderboard güncelle (Eğer döküman varsa ismini günceller, yoksa boş oluşturmaz)
+    db.collection('leaderboard').doc(currentUser.uid).set({ userName: name }, { merge: true });
+
+    $('modal-username').classList.add('hidden');
+    toast('Profil güncellendi!', 'success');
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'auth/requires-recent-login') {
+      toast('Güvenlik nedeniyle çıkış yapıp tekrar giriş yapmalısınız.', 'error');
+    } else if (err.code === 'auth/email-already-in-use') {
+      toast('Bu nick başkası tarafından kullanılıyor.', 'error');
+    } else {
+      toast('Güncelleme başarısız.', 'error');
+    }
+  } finally {
+    $('modal-username-save').textContent = 'Kaydet';
+  }
 });
 
 /* ════════════════════════════════════════════
