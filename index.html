@@ -28,8 +28,8 @@
 ║     rules_version = '2';                                                    ║
 ║     service cloud.firestore {                                               ║
 ║       match /databases/{database}/documents {                               ║
-║         // Kullanıcı kendi profilini okuyup yazabilir                       ║
-║         match /users/{userId} {                                             ║
+║         // Kullanıcı kendi profilini ve alt koleksiyonlarını (activities) okuyup yazabilir ║
+║         match /users/{userId}/{document=**} {                               ║
 ║           allow read, write: if request.auth != null                        ║
 ║                               && request.auth.uid == userId;                ║
 ║         }                                                                   ║
@@ -53,8 +53,8 @@
 ║     {                                                                        ║
 ║       "rules": {                                                            ║
 ║         "presence": {                                                       ║
+║           ".read": "auth != null",                                          ║
 ║           "$uid": {                                                         ║
-║             ".read": true,                                                  ║
 ║             ".write": "auth != null && auth.uid == $uid"                    ║
 ║           }                                                                 ║
 ║         }                                                                   ║
@@ -1331,23 +1331,33 @@ async function addActivity() {
   if (!name) { toast('Etkinlik adı giriniz.', 'error'); return; }
   if (!estimated || estimated < 1) { toast('Geçerli bir süre giriniz.', 'error'); return; }
 
-  await db.collection('users').doc(currentUser.uid)
-    .collection('activities').add({
-      name, estimated, category,
-      elapsed: 0,
-      startTimestamp: null, // null = durdu
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+  try {
+    await db.collection('users').doc(currentUser.uid)
+      .collection('activities').add({
+        name, estimated, category,
+        elapsed: 0,
+        startTimestamp: null, // null = durdu
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
 
-  $('act-name').value = '';
-  $('act-estimated').value = '';
-  toast('Etkinlik eklendi!', 'success');
+    $('act-name').value = '';
+    $('act-estimated').value = '';
+    toast('Etkinlik eklendi!', 'success');
+  } catch (err) {
+    console.error("Etkinlik ekleme hatası:", err);
+    toast('Hata: Yetkiniz yok (Firebase Kurallarını güncelleyin)', 'error');
+  }
 }
 
 async function deleteActivity(id) {
-  if (runningTimers[id]) await stopTimer(id, false);
-  await db.collection('users').doc(currentUser.uid)
-    .collection('activities').doc(id).delete();
+  try {
+    if (runningTimers[id]) await stopTimer(id, false);
+    await db.collection('users').doc(currentUser.uid)
+      .collection('activities').doc(id).delete();
+  } catch (err) {
+    console.error("Etkinlik silme hatası:", err);
+    toast('Hata: Yetkiniz yok (Firebase Kurallarını güncelleyin)', 'error');
+  }
 }
 
 // elapsed = saniye cinsinden toplam geçen süre
