@@ -237,7 +237,7 @@
         <div class="text-sm mt-2" id="goal-status-text">Bugün henüz çalışma kaydı yok.</div>
       </div>
 
-      <!-- ŞU AN ÇALIŞANLAR (ANİMASYONLU MASAÜSTÜ - İSİMLER DÜZELTİLDİ) -->
+      <!-- ŞU AN ÇALIŞANLAR -->
       <div id="presence-section">
         <div class="card-title">👥 Şu An Çalışanlar <span id="online-count-badge" class="badge badge-green" style="margin-left:auto">0 kişi</span></div>
         <div id="presence-container">
@@ -320,7 +320,7 @@
   </main>
 </div>
 
-<!-- MODAL: PROFİL DÜZENLE (ŞİFRE DEĞİŞTİRME EKLENDİ) -->
+<!-- MODALS -->
 <div class="modal-overlay hidden" id="modal-username">
   <div class="modal-box">
     <div class="modal-title">Profili Düzenle</div>
@@ -336,7 +336,6 @@
   </div>
 </div>
 
-<!-- MODAL: HEDEF -->
 <div class="modal-overlay hidden" id="modal-goal">
   <div class="modal-box">
     <div class="modal-title">Günlük Hedef</div>
@@ -349,7 +348,7 @@
 </div>
 
 <script>
-  /* ══════════ FIREBASE CONFIG (KENDİ BİLGİLERİNİZİ GİRİN) ══════════ */
+  // ══════════ FIREBASE CONFIG (KENDİ BİLGİLERİNİZİ GİRİN) ══════════
   const firebaseConfig = {
     apiKey: "AIzaSyDCuodwSDZ_7ExK8hT6cTTV68ANs7OCLc4",
     authDomain: "calisalim.firebaseapp.com",
@@ -531,14 +530,95 @@
 
   // Activities
   function listenActivities(){ db.collection('users').doc(currentUser.uid).collection('activities').orderBy('createdAt','desc').onSnapshot(snap=>{ activities=snap.docs.map(d=>({id:d.id,...d.data()})); activities.forEach(a=>{ if(a.startTimestamp&&!runningTimers[a.id]) _attachLocalInterval(a.id,a.startTimestamp); }); renderActivities(); }); }
-  function _attachLocalInterval(id,startTimestamp){ if(runningTimers[id])return; runningTimers[id]={startTimestamp,get elapsed(){return Math.floor((Date.now()-this.startTimestamp)/1000);},interval:setInterval(()=>{const el=$(`timer-${id}`);if(el){const sec=Math.floor((Date.now()-startTimestamp)/1000);el.textContent=formatTimer(sec);const act=activities.find(a=>a.id===id);if(act){const pb=document.querySelector(`#act-item-${id} .progress-bar`);if(pb)pb.style.width=Math.min(100,Math.round(sec/60/act.estimated*100))+'%';}}},1000)};}
+  function _attachLocalInterval(id, startTimestamp){
+    if(runningTimers[id]) clearInterval(runningTimers[id].interval);
+    const act = activities.find(a => a.id === id);
+    const prev = act ? act.elapsed : 0;
+    runningTimers[id] = {
+      startTimestamp,
+      prevElapsed: prev,
+      interval: setInterval(()=>{
+        const el=$( `timer-${id}` );
+        if(el){
+          const sec = Math.floor((Date.now() - startTimestamp) / 1000);
+          el.textContent = formatTimer(sec);
+          const pb = document.querySelector(`#act-item-${id} .progress-bar`);
+          if(pb && act){
+            pb.style.width = Math.min(100, Math.round(sec / 60 / act.estimated * 100)) + '%';
+          }
+        }
+      }, 1000)
+    };
+  }
   async function addActivity(){ const name=$('act-name').value.trim(),estimated=parseInt($('act-estimated').value),category=$('act-category').value; if(!name){toast('Ad giriniz.','error');return;} try{ await db.collection('users').doc(currentUser.uid).collection('activities').add({name,estimated,category,elapsed:0,startTimestamp:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); $('act-name').value='';$('act-estimated').value=''; toast('Eklendi!','success'); }catch(err){toast('Hata!','error');} }
-  function renderActivities(){ const list=$('activity-list'); if(!activities.length){list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div>';return;} list.innerHTML=activities.map(act=>{ const meta=CATEGORY_META[act.category]||CATEGORY_META.other; const isRun=!!runningTimers[act.id]; const timerSec=isRun?Math.floor((Date.now()-runningTimers[act.id].startTimestamp)/1000):(act.elapsed||0); const kalan=Math.max(0,(act.estimated||0)-Math.floor(timerSec/60)); const pct=Math.min(100,Math.round(timerSec/60/(act.estimated||1)*100)); return `<div class="activity-item ${isRun?'running':''}" id="act-item-${act.id}"><div class="activity-dot" style="background:${meta.color}"></div><div class="activity-info"><div class="activity-name">${act.name}</div><div class="activity-meta">${meta.label} · ${act.estimated}dk · Kalan: ${kalan}dk</div><div class="progress-wrap mt-2" style="height:4px"><div class="progress-bar" style="width:${pct}%;background:${meta.color}"></div></div></div><div class="activity-timer ${isRun?'running':''}" id="timer-${act.id}">${formatTimer(timerSec)}</div><div class="activity-actions"><button class="btn btn-sm ${isRun?'btn-danger':'btn-success'}" onclick="toggleTimer('${act.id}')">${isRun?'Durdur':'Başla'}</button><button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')">↺</button><button class="btn btn-sm btn-secondary btn-icon" onclick="deleteActivity('${act.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div></div>`; }).join(''); }
+  function renderActivities(){ const list=$('activity-list'); if(!activities.length){list.innerHTML='<div class="text-sm" style="text-align:center;padding:16px">Henüz etkinlik yok.</div>';return;} list.innerHTML=activities.map(act=>{ const meta=CATEGORY_META[act.category]||CATEGORY_META.other; const isRun=!!runningTimers[act.id]; const timerSec=isRun ? Math.floor((Date.now() - runningTimers[act.id].startTimestamp) / 1000) : (act.elapsed||0); const kalan=Math.max(0,(act.estimated||0)-Math.floor(timerSec/60)); const pct=Math.min(100,Math.round(timerSec/60/(act.estimated||1)*100)); return `<div class="activity-item ${isRun?'running':''}" id="act-item-${act.id}"><div class="activity-dot" style="background:${meta.color}"></div><div class="activity-info"><div class="activity-name">${act.name}</div><div class="activity-meta">${meta.label} · ${act.estimated}dk · Kalan: ${kalan}dk</div><div class="progress-wrap mt-2" style="height:4px"><div class="progress-bar" style="width:${pct}%;background:${meta.color}"></div></div></div><div class="activity-timer ${isRun?'running':''}" id="timer-${act.id}">${formatTimer(timerSec)}</div><div class="activity-actions"><button class="btn btn-sm ${isRun?'btn-danger':'btn-success'}" onclick="toggleTimer('${act.id}')">${isRun?'Durdur':'Başla'}</button><button class="btn btn-sm btn-secondary" onclick="resetTimer('${act.id}')">↺</button><button class="btn btn-sm btn-secondary btn-icon" onclick="deleteActivity('${act.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div></div>`; }).join(''); }
   function toggleTimer(id){ if(runningTimers[id]) stopTimer(id,true); else startTimer(id); }
-  async function startTimer(id){ for(const tid of Object.keys(runningTimers).filter(t=>t!==id)) await stopTimer(tid,true); const act=activities.find(a=>a.id===id); if(!act)return; const prev=act.elapsed||0; const st=Date.now()-prev*1000; await _saveActivityState(id,prev,st); _attachLocalInterval(id,st); renderActivities(); updateActiveTimerCard(); toast('Başlatıldı ▶','success'); }
-  async function stopTimer(id,save=true){ if(!runningTimers[id])return; clearInterval(runningTimers[id].interval); const st=runningTimers[id].startTimestamp; const elapsed=Math.floor((Date.now()-st)/1000); delete runningTimers[id]; await _saveActivityState(id,elapsed,null); if(save&&elapsed>0){ const min=Math.floor(elapsed/60); if(min>0){ const act=activities.find(a=>a.id===id); await addSession(min,act?act.name:'',id); toast(`${min} dk kaydedildi! ✓`,'success'); } } renderActivities(); updateActiveTimerCard(); }
-  async function resetTimer(id){ if(runningTimers[id]){ clearInterval(runningTimers[id].interval); delete runningTimers[id]; } await _saveActivityState(id,0,null); renderActivities(); updateActiveTimerCard(); toast('Sıfırlandı.','info'); }
-  async function _saveActivityState(id,elapsed,startTimestamp){ await db.collection('users').doc(currentUser.uid).collection('activities').doc(id).update({elapsed,startTimestamp}); }
+
+  async function startTimer(id){
+    // Varsa diğer timer'ları durdur
+    for(const tid of Object.keys(runningTimers).filter(t=>t!==id)) await stopTimer(tid, true);
+    const act = activities.find(a => a.id === id);
+    if(!act) return;
+    const prev = act.elapsed || 0;
+    const st = Date.now() - prev * 1000;
+    await _saveActivityState(id, prev, st);
+    _attachLocalInterval(id, st);
+    renderActivities();
+    updateActiveTimerCard();
+    toast('Başlatıldı ▶','success');
+  }
+
+  async function stopTimer(id, save = true){
+    if(!runningTimers[id]) return;
+    const { startTimestamp, prevElapsed, interval } = runningTimers[id];
+    clearInterval(interval);
+    const totalElapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+    const sessionElapsed = totalElapsed - prevElapsed; // bu oturumdaki süre
+    delete runningTimers[id];
+
+    await _saveActivityState(id, totalElapsed, null);
+
+    if(save && sessionElapsed > 0){
+      const min = Math.floor(sessionElapsed / 60);
+      if(min > 0){
+        const act = activities.find(a => a.id === id);
+        await addSession(min, act ? act.name : '', id);
+        toast(`${min} dk kaydedildi! ✓`,'success');
+      }
+    }
+    renderActivities();
+    updateActiveTimerCard();
+  }
+
+  async function resetTimer(id){
+    if(runningTimers[id]){
+      clearInterval(runningTimers[id].interval);
+      delete runningTimers[id];
+    }
+    await _saveActivityState(id, 0, null);
+    renderActivities();
+    updateActiveTimerCard();
+    toast('Sıfırlandı.','info');
+  }
+
+  async function deleteActivity(id){
+    try {
+      if(runningTimers[id]){
+        clearInterval(runningTimers[id].interval);
+        delete runningTimers[id];
+      }
+      await db.collection('users').doc(currentUser.uid)
+        .collection('activities').doc(id).delete();
+      toast('Etkinlik silindi.','info');
+    } catch(err){
+      toast('Silinemedi.','error');
+    }
+  }
+
+  async function _saveActivityState(id, elapsed, startTimestamp){
+    await db.collection('users').doc(currentUser.uid)
+      .collection('activities').doc(id).update({ elapsed, startTimestamp });
+  }
 
   // Calendar
   function listenCalendarEvents(){ db.collection('users').doc(currentUser.uid).collection('calendarEvents').orderBy('dateTime','asc').onSnapshot(snap=>{ calendarEvents=snap.docs.map(d=>({id:d.id,...d.data()})); renderCalendarEvents(); }); }
@@ -562,7 +642,7 @@
   document.querySelectorAll('.nav-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const tab=btn.dataset.tab;document.querySelectorAll('[id^="tab-"]').forEach(t=>t.classList.add('hidden'));$(`tab-${tab}`).classList.remove('hidden');if(tab==='calendar')startCalendarCountdown();else stopCalendarCountdown();if(tab==='stats')renderStats();if(tab==='leaderboard'){loadLeaderboard(lbPeriod);if(!lbRefreshTimer)lbRefreshTimer=setInterval(()=>loadLeaderboard(lbPeriod),60000);}else{clearInterval(lbRefreshTimer);lbRefreshTimer=null;}}));
   document.querySelectorAll('.lb-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.lb-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadLeaderboard(btn.dataset.period);}));
 
-  // MODAL: PROFİL (ŞİFRE DEĞİŞTİRME DAHİL)
+  // Modals
   $('user-badge-btn').addEventListener('click',()=>{
     $('new-username-input').value=userProfile.displayName||'';
     $('new-password-input').value='';
@@ -587,17 +667,13 @@
     const name=$('new-username-input').value.trim();
     const newPassword=$('new-password-input').value;
     if(!name){toast('İsim giriniz.','error');return;}
-
     const selectedBtn=document.querySelector('#emoji-picker button[data-selected="true"]');
     const avatar=selectedBtn?selectedBtn.textContent:userProfile.avatar;
-
     try{
-      // Şifre değiştir
       if(newPassword){
         if(newPassword.length<6){ toast('Şifre en az 6 karakter olmalı.','error'); return; }
         await currentUser.updatePassword(newPassword);
       }
-      // Profili güncelle (isim ve avatar)
       await saveUserProfile({displayName:name,avatar});
       $('modal-username').classList.add('hidden');
       toast('Profil güncellendi.','success');
@@ -610,18 +686,42 @@
       }
     }
   });
-
-  // MODAL: HEDEF
   $('edit-goal-btn').addEventListener('click',()=>{$('new-goal-input').value=userProfile.dailyGoal||120;$('modal-goal').classList.remove('hidden');});
   $('modal-goal-cancel').addEventListener('click',()=>$('modal-goal').classList.add('hidden'));
   $('modal-goal-save').addEventListener('click',async()=>{const goal=parseInt($('new-goal-input').value);if(!goal||goal<10){toast('En az 10 dk.','error');return;}await saveUserProfile({dailyGoal:goal});$('modal-goal').classList.add('hidden');updateGoalDisplay();toast('Hedef güncellendi!','success');});
 
-  // Manuel & Quick Pomodoro
+  // Manual & Quick Pomodoro
   $('manual-add-btn').addEventListener('click',async()=>{const min=parseInt($('manual-minutes').value),note=$('manual-note').value.trim();if(!min||min<1){toast('Süre giriniz.','error');return;}await addSession(min,note);$('manual-minutes').value='';$('manual-note').value='';toast(`${min} dk kaydedildi!`,'success');});
   $('add-activity-btn').addEventListener('click',addActivity);
   $('add-calendar-btn').addEventListener('click',addCalendarEvent);
-  async function startQuickPomodoro(){ const name=$('quick-pomodoro-name').value.trim(); const minutes=parseInt($('quick-pomodoro-minutes').value); if(!name){toast('Etkinlik adı giriniz.','error');return;} if(!minutes||minutes<1){toast('Süre giriniz.','error');return;} try{ const docRef=await db.collection('users').doc(currentUser.uid).collection('activities').add({name,estimated:minutes,category:'other',elapsed:0,startTimestamp:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); toast('Başlatılıyor...','success'); startTimer(docRef.id); $('quick-pomodoro-name').value='';$('quick-pomodoro-minutes').value='25'; }catch(err){toast('Başlatılamadı.','error');} }
-  $('start-quick-pomodoro-btn').addEventListener('click',startQuickPomodoro);
+
+  async function startQuickPomodoro(){
+    const name = $('quick-pomodoro-name').value.trim();
+    const minutes = parseInt($('quick-pomodoro-minutes').value);
+    if(!name){ toast('Etkinlik adı giriniz.','error'); return; }
+    if(!minutes || minutes < 1){ toast('Süre giriniz.','error'); return; }
+    try {
+      const docRef = await db.collection('users').doc(currentUser.uid)
+        .collection('activities').add({
+          name, estimated: minutes, category: 'other',
+          elapsed: 0, startTimestamp: null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      // Geçici olarak activities dizisine ekleyelim ki startTimer bulabilsin
+      activities.push({
+        id: docRef.id,
+        name, estimated: minutes, category: 'other',
+        elapsed: 0, startTimestamp: null
+      });
+      toast('Başlatılıyor...','success');
+      startTimer(docRef.id);
+      $('quick-pomodoro-name').value = '';
+      $('quick-pomodoro-minutes').value = '25';
+    } catch(err) {
+      toast('Başlatılamadı.','error');
+    }
+  }
+  $('start-quick-pomodoro-btn').addEventListener('click', startQuickPomodoro);
 
   ['modal-username','modal-goal'].forEach(id=>$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).classList.add('hidden');}));
 </script>
